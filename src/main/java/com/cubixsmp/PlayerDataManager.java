@@ -5,14 +5,14 @@ import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 public class PlayerDataManager {
 
     private final CubixSMP plugin;
-    private final Map<UUID, PlayerData> dataMap = new HashMap<>();
+    private final Map<UUID, PlayerData> dataMap = new ConcurrentHashMap<>();
 
     private static class PlayerData {
         int level;
@@ -20,26 +20,33 @@ public class PlayerDataManager {
         int totalPlaytimeSeconds;
         long lastDailyBonusDay;
         boolean soundEnabled;
+        int uid;
 
-        PlayerData() {
-            this.level = 0;
+        PlayerData(CubixSMP plugin) {
+            this.level = plugin.getLevelManager().getMinLevel();
             this.xp = 0;
             this.totalPlaytimeSeconds = 0;
             this.lastDailyBonusDay = 0;
             this.soundEnabled = true;
+            this.uid = 0;
         }
 
-        PlayerData(int level, double xp, int totalPlaytimeSeconds, long lastDailyBonusDay, boolean soundEnabled) {
+        PlayerData(int level, double xp, int totalPlaytimeSeconds, long lastDailyBonusDay, boolean soundEnabled, int uid) {
             this.level = level;
             this.xp = xp;
             this.totalPlaytimeSeconds = totalPlaytimeSeconds;
             this.lastDailyBonusDay = lastDailyBonusDay;
             this.soundEnabled = soundEnabled;
+            this.uid = uid;
         }
     }
 
+    /** Следующий свободный номер аккаунта (UID). */
+    private int nextUid;
+
     public PlayerDataManager(CubixSMP plugin) {
         this.plugin = plugin;
+        loadUidCounter();
         plugin.getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
             public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
@@ -51,12 +58,35 @@ public class PlayerDataManager {
                 dataMap.remove(e.getPlayer().getUniqueId());
             }
         }, plugin);
+
+        // ⏱ Автосохранение каждые 5 минут — чтобы данные не терялись при краше/рестарте
+        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::saveAll, 6000L, 6000L);
     }
 
-    public void loadAll() {
+    public synchronized void loadAll() {
         File folder = plugin.getPlayerDataFolder();
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files == null) return;
+
+        // 🛡 Восстановление счётчика ДО выдачи новых номеров: если uid-counter.yml
+        // потерян/удалён, продолжаем с максимального уже выданного UID (по файлам),
+        // чтобы не выдавать дубликаты даже при наличии старых файлов без UID.
+        int maxUid = 0;
+        for (File f : files) {
+            String name = f.getName().replace(".yml", "");
+            try {
+                UUID.fromString(name); // пропускаем файлы с не-UUID именами
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(f);
+            maxUid = Math.max(maxUid, config.getInt("uid", 0));
+        }
+        if (nextUid <= maxUid) {
+            nextUid = maxUid + 1;
+            saveUidCounter();
+        }
+
         for (File f : files) {
             String name = f.getName().replace(".yml", "");
             try {
@@ -66,26 +96,28 @@ public class PlayerDataManager {
         }
     }
 
-    public void load(UUID uuid) {
+    public synchronized void load(UUID uuid) {
         File file = getFile(uuid);
+        PlayerData data;
         if (!file.exists()) {
-            dataMap.put(uuid, new PlayerData());
-            syncToManagers(uuid);
-            return;
+            data = new PlayerData(plugin);
+        } else {
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+            data = new PlayerData(
+                    config.getInt("level", plugin.getLevelManager().getMinLevel()),
+                    config.getDouble("xp", 0),
+                    config.getInt("playtime", 0),
+                    config.getLong("daily-bonus-day", 0),
+                    config.getBoolean("sound-enabled", true),
+                    config.getInt("uid", 0)
+            );
         }
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-        PlayerData data = new PlayerData(
-                config.getInt("level", 0),
-                config.getDouble("xp", 0),
-                config.getInt("playtime", 0),
-                config.getLong("daily-bonus-day", 0),
-                config.getBoolean("sound-enabled", true)
-        );
         dataMap.put(uuid, data);
+        ensureUid(uuid, data);
         syncToManagers(uuid);
     }
 
-    public void save(UUID uuid) {
+    public synchronized void save(UUID uuid) {
         PlayerData data = dataMap.get(uuid);
         if (data == null) return;
         File file = getFile(uuid);
@@ -95,6 +127,7 @@ public class PlayerDataManager {
         config.set("playtime", data.totalPlaytimeSeconds);
         config.set("daily-bonus-day", data.lastDailyBonusDay);
         config.set("sound-enabled", data.soundEnabled);
+        config.set("uid", data.uid);
         try {
             config.save(file);
         } catch (IOException e) {
@@ -103,15 +136,64 @@ public class PlayerDataManager {
         }
     }
 
-    public void saveAll() {
+    public synchronized void saveAll() {
         for (UUID uuid : dataMap.keySet()) {
             save(uuid);
         }
     }
 
+    // ─── UID: номер аккаунта игрока ────────────────────────────────────
+
+    /**
+     * Присваивает игроку порядковый номер аккаунта (UID), если его ещё нет.
+     * Первый игрок получит номер из конфига {@code uid.starting-number} (по умолчанию 1),
+     * следующий — на единицу больше и т.д. Номер сохраняется сразу, чтобы не потеряться.
+     */
+    private void ensureUid(UUID uuid, PlayerData data) {
+        if (!plugin.getConfig().getBoolean("uid.enabled", true)) return;
+        if (data.uid != 0) return;
+        data.uid = nextUid++;
+        saveUidCounter();
+        save(uuid);
+    }
+
+    /** Возвращает номер аккаунта игрока (0, если ещё не присвоен). */
+    public int getUid(UUID uuid) {
+        PlayerData data = dataMap.get(uuid);
+        return data == null ? 0 : data.uid;
+    }
+
+    /** Загружает счётчик UID из файла (или стартовый номер из конфига). */
+    private void loadUidCounter() {
+        File file = getUidCounterFile();
+        if (file.exists()) {
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+            nextUid = config.getInt("next-uid", plugin.getConfig().getInt("uid.starting-number", 1));
+        } else {
+            nextUid = plugin.getConfig().getInt("uid.starting-number", 1);
+        }
+    }
+
+    /** Сохраняет счётчик UID. */
+    private void saveUidCounter() {
+        File file = getUidCounterFile();
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("next-uid", nextUid);
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().warning(MessagesManager.format("errors.data_save", "§c⚠ Error saving UID counter: {error}",
+                    "error", e.getMessage()));
+        }
+    }
+
+    private File getUidCounterFile() {
+        return new File(plugin.getDataFolder(), "uid-counter.yml");
+    }
+
     public int getLevel(UUID uuid) {
         PlayerData data = dataMap.get(uuid);
-        return data == null ? 0 : data.level;
+        return data == null ? plugin.getLevelManager().getMinLevel() : data.level;
     }
 
     public double getXp(UUID uuid) {
@@ -120,19 +202,34 @@ public class PlayerDataManager {
     }
 
     public void setLevel(UUID uuid, int level) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) {
+            load(uuid);
+            data = dataMap.get(uuid);
+            if (data == null) return;
+        }
         data.level = level;
         plugin.getLevelManager().setLevel(uuid, level);
     }
 
     public void setXp(UUID uuid, double xp) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) {
+            load(uuid);
+            data = dataMap.get(uuid);
+            if (data == null) return;
+        }
         data.xp = xp;
         plugin.getLevelManager().setXp(uuid, xp);
     }
 
     public void addXp(UUID uuid, double amount, Player player) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) {
+            load(uuid);
+            data = dataMap.get(uuid);
+            if (data == null) return;
+        }
         data.xp += amount;
         plugin.getLevelManager().setXp(uuid, data.xp);
 
@@ -166,7 +263,12 @@ public class PlayerDataManager {
     }
 
     public void addPlaytime(UUID uuid, int seconds) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) {
+            load(uuid);
+            data = dataMap.get(uuid);
+            if (data == null) return;
+        }
         data.totalPlaytimeSeconds += seconds;
 
         int interval = plugin.getConfig().getInt("settings.playtime-interval", 1800);
@@ -189,13 +291,19 @@ public class PlayerDataManager {
     }
 
     public boolean canClaimDailyBonus(UUID uuid) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) return true; // игрок ещё не загружен — бонус доступен, без перезаписи данных
         long today = java.time.LocalDate.now().toEpochDay();
         return data.lastDailyBonusDay != today;
     }
 
     public void claimDailyBonus(UUID uuid, Player player) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) {
+            load(uuid); // подгружаем, если по какой-то причине нет в памяти
+            data = dataMap.get(uuid);
+            if (data == null) return; // аварийный выход
+        }
         data.lastDailyBonusDay = java.time.LocalDate.now().toEpochDay();
         int xp = plugin.getConfig().getInt("settings.daily-bonus-xp", 50);
         addXp(uuid, xp, player);
@@ -213,7 +321,12 @@ public class PlayerDataManager {
      * Переключает звук XP для игрока. Возвращает новое состояние (true = звук включён).
      */
     public boolean toggleSound(UUID uuid) {
-        PlayerData data = dataMap.computeIfAbsent(uuid, k -> new PlayerData());
+        PlayerData data = dataMap.get(uuid);
+        if (data == null) {
+            load(uuid);
+            data = dataMap.get(uuid);
+            if (data == null) return true;
+        }
         data.soundEnabled = !data.soundEnabled;
         save(uuid);
         return data.soundEnabled;
@@ -235,7 +348,7 @@ public class PlayerDataManager {
      * @param limit количество записей в топе
      * @return список массивов [name, level, xp]
      */
-    public java.util.List<String[]> getTopPlayers(int limit) {
+    public synchronized java.util.List<String[]> getTopPlayers(int limit) {
         java.util.List<String[]> result = new java.util.ArrayList<>();
         File folder = plugin.getPlayerDataFolder();
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
@@ -310,5 +423,14 @@ public class PlayerDataManager {
 
     private File getFile(UUID uuid) {
         return new File(plugin.getPlayerDataFolder(), uuid.toString() + ".yml");
+    }
+
+    /**
+     * Удаляет файл данных игрока (используется админ-командой сброса).
+     * Синхронизирован, чтобы не конфликтовать с фоновым автосохранением.
+     */
+    public synchronized void deleteDataFile(UUID uuid) {
+        File dataFile = getFile(uuid);
+        if (dataFile.exists()) dataFile.delete();
     }
 }

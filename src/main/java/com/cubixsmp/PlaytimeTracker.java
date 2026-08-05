@@ -175,7 +175,7 @@ public class PlaytimeTracker implements Listener {
     // СОХРАНЕНИЕ / ЗАГРУЗКА
     // ═══════════════════════════════════════════════════
 
-    private void loadAll() {
+    private synchronized void loadAll() {
         File[] files = dataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files == null) return;
 
@@ -195,7 +195,7 @@ public class PlaytimeTracker implements Listener {
         }
     }
 
-    private void saveAll() {
+    private synchronized void saveAll() {
         for (Map.Entry<UUID, Map<String, Long>> entry : dailyLogs.entrySet()) {
             UUID uuid = entry.getKey();
             Map<String, Long> log = entry.getValue();
@@ -218,7 +218,7 @@ public class PlaytimeTracker implements Listener {
     // АВТОВЫЧИСТКА
     // ═══════════════════════════════════════════════════
 
-    private void cleanupOld() {
+    private synchronized void cleanupOld() {
         int retention = plugin.getConfig().getInt(CFG + "log-retention-days", 7);
         LocalDate cutoff = LocalDate.now().minusDays(retention);
         int removed = 0;

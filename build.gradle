@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.cubixsmp'
-version = '1.2'
+version = '1.2.0'
 
 repositories {
     mavenCentral()
@@ -16,11 +16,16 @@ repositories {
         name = "placeholderapi-repo"
         url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
     }
+    maven {
+        name = "enginehub-repo"
+        url = "https://maven.enginehub.org/repo/"
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.14")
 }
 
 java {

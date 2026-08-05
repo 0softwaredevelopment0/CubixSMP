@@ -58,6 +58,9 @@ public class CubixSMPPlaceholderExpansion extends PlaceholderExpansion {
             // %cubixsmp_player% — имя игрока
             case "player" -> player.getName();
 
+            // %cubixsmp_uid% — номер аккаунта игрока (1-й игрок = 1, 2-й = 2 и т.д.)
+            case "uid" -> String.valueOf(plugin.getPlayerDataManager().getUid(player.getUniqueId()));
+
             // %cubixsmp_level% — текущий уровень
             case "level" -> String.valueOf(plugin.getLevelManager().getLevel(player.getUniqueId()));
 

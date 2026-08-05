@@ -40,6 +40,7 @@ public class CubixSMPCommand implements CommandExecutor {
             case "sound" -> handleSound(sender);
             case "leaders" -> handleLeaders(sender);
             case "ping" -> handlePing(sender);
+            case "checkonline" -> handleCheckOnline(sender, args);
             default -> handleHelp(sender);
         };
     }
@@ -171,10 +172,11 @@ public class CubixSMPCommand implements CommandExecutor {
             return true;
         }
 
+        int minLevel = plugin.getLevelManager().getMinLevel();
         int maxLevel = plugin.getLevelManager().getMaxLevel();
-        if (level < 0 || level > maxLevel) {
-            sender.sendMessage(MessagesManager.format("admin.setlevel_invalid_level", "§c❌ Level must be 0-{max}!",
-                    "max", String.valueOf(maxLevel)));
+        if (level < minLevel || level > maxLevel) {
+            sender.sendMessage(MessagesManager.format("admin.setlevel_invalid_level", "§c❌ Level must be {min}-{max}!",
+                    "min", String.valueOf(minLevel), "max", String.valueOf(maxLevel)));
             return true;
         }
 
@@ -309,13 +311,12 @@ public class CubixSMPCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getPlayerDataManager().setLevel(uuid, 0);
+        plugin.getPlayerDataManager().setLevel(uuid, plugin.getLevelManager().getMinLevel());
         plugin.getPlayerDataManager().setXp(uuid, 0);
         plugin.getPlayerDataManager().syncToManagers(uuid);
 
-        // Удаляем файл данных
-        java.io.File dataFile = new java.io.File(plugin.getPlayerDataFolder(), uuid.toString() + ".yml");
-        if (dataFile.exists()) dataFile.delete();
+        // Удаляем файл данных (через менеджер — с синхронизацией, чтобы не конфликтовать с автосохранением)
+        plugin.getPlayerDataManager().deleteDataFile(uuid);
 
         sender.sendMessage(MessagesManager.format("admin.reset_success", "§a✔ Player §e{target} §areset!",
                 "target", targetName));
@@ -383,6 +384,15 @@ public class CubixSMPCommand implements CommandExecutor {
             player.sendMessage(MessagesManager.getString("command.sound_off", "§c✔ Звук XP §c§lВЫКЛЮЧЕН"));
         }
         return true;
+    }
+
+    // ─── CheckOnline ───────────────────────────
+
+    private boolean handleCheckOnline(CommandSender sender, String[] args) {
+        // args[0] = "checkonline", args[1+] = player name (optional)
+        String[] strippedArgs = new String[args.length - 1];
+        System.arraycopy(args, 1, strippedArgs, 0, args.length - 1);
+        return plugin.getPlaytimeTracker().handleCheckOnline(sender, strippedArgs);
     }
 
     // ─── Ping toggle ────────────────────────────

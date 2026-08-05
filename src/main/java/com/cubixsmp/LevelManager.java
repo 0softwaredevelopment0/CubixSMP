@@ -13,7 +13,9 @@ public class LevelManager {
     // XP needed per level formula: base + (level * multiplier)
     private double xpBase;
     private double xpMultiplier;
+    private int minLevel;
     private int maxLevel;
+    private double minLevelXp;
 
     public LevelManager(CubixSMP plugin) {
         this.plugin = plugin;
@@ -23,15 +25,21 @@ public class LevelManager {
     public void reload() {
         xpBase = plugin.getConfig().getDouble("settings.xp-base", 100);
         xpMultiplier = plugin.getConfig().getDouble("settings.xp-multiplier", 1.5);
+        minLevel = plugin.getConfig().getInt("settings.min-level", 1);
         maxLevel = plugin.getConfig().getInt("settings.max-level", 100);
+        minLevelXp = plugin.getConfig().getDouble("settings.min-level-xp", 100);
     }
 
     public double getXpForNextLevel(int currentLevel) {
+        // Для первого левелапа (minLevel → minLevel+1) используем отдельную настройку
+        if (currentLevel == minLevel) {
+            return minLevelXp;
+        }
         return xpBase + (currentLevel * xpMultiplier);
     }
 
     public int getLevel(UUID uuid) {
-        return levelCache.getOrDefault(uuid, 0);
+        return levelCache.getOrDefault(uuid, minLevel);
     }
 
     public double getXp(UUID uuid) {
@@ -39,7 +47,7 @@ public class LevelManager {
     }
 
     public void setLevel(UUID uuid, int level) {
-        levelCache.put(uuid, Math.min(level, maxLevel));
+        levelCache.put(uuid, Math.max(minLevel, Math.min(level, maxLevel)));
     }
 
     public void setXp(UUID uuid, double xp) {
@@ -68,6 +76,10 @@ public class LevelManager {
         setLevel(uuid, currentLevel);
 
         return leveledUp;
+    }
+
+    public int getMinLevel() {
+        return minLevel;
     }
 
     public int getMaxLevel() {

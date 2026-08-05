@@ -1,123 +1,129 @@
 # CubixSMP
 
-**CubixSMP** — плагин для Paper 1.21.4, добавляющий продвинутую систему уровней (Cubix Level) на ваш SMP-сервер. Игроки зарабатывают опыт (XP) за различные действия в игре и повышают свой уровень.
+![Development status](https://img.shields.io/badge/status-Stable-brightgreen)
 
-🇷🇺 Разработан специально для русскоязычных SMP-серверов. Все сообщения полностью переводимы через `messages.yml`.
+**CubixSMP** — a Paper 1.21.4 plugin that adds an advanced leveling system (Cubix Level) to your SMP server. Players earn experience (XP) for various in-game activities and level up.
 
----
-
-## 📋 Содержание
-
-- [Возможности](#-возможности)
-- [Источники XP](#-источники-xp)
-- [Команды и права](#-команды-и-права)
-- [Плейсхолдеры (PlaceholderAPI)](#-плейсхолдеры-placeholderapi)
-- [Установка](#-установка)
-- [Конфигурация](#-конфигурация)
-- [Сборка из исходников](#-сборка-из-исходников)
-- [Требования](#-требования)
-- [Структура проекта](#-структура-проекта)
-- [Часто задаваемые вопросы](#-часто-задаваемые-вопросы)
-- [Лицензия](#-лицензия)
+🌍 Originally built for Russian-language SMP servers, but every message is fully translatable via the `messages` section in `config.yml`.
 
 ---
 
-## ✨ Возможности
+## 📋 Table of contents
 
-- **8 видов деятельности** для получения XP (шахтёрство, фермерство, рубка, рыбалка, охота, исследование, время онлайн, ежедневный бонус)
-- **Гибкая система уровней** — формула XP настраивается в config.yml
-- **Защита от читеров** — XP начисляется только за натуральные блоки и мобов
-- **PlaceholderAPI** — интеграция с TAB, Scoreboard, Chat и другими плагинами
-- **Полная переводимость** — все сообщения в отдельном файле messages.yml
-
----
-
-## ⛏ Источники XP
-
-| Активность | Описание | XP |
-|:----------:|----------|:--:|
-| ⛏ Шахтёрство | Добыча руд (уголь → древние обломки) | 1–10 XP |
-| 🌾 Фермерство | Сбор урожая, тыкв, арбузов, ягод, мёда | 0.5–5 XP |
-| 🌲 Рубка деревьев | Любое бревно (дуб, ель, берёза, тропическое, акация, вишня, мангр, адские стебли) | 0.2 XP |
-| 🎣 Рыбалка | Любая пойманная рыба | 5 XP |
-| ⚔ Охота | Убийство мобов (зеомби 3 XP, хранитель 50 XP, иссушитель и т.д.) | 1–50 XP |
-| 🚶 Дистанция | Каждые 1000 блоков пути | 5 XP |
-| ⏱ Время онлайн | Каждые 30 минут игры | 10 XP |
-| ☀ Ежедневный бонус | Раз в сутки через `/cubixsmp daily` | 50 XP |
-
-> **Важно:** XP начисляется ТОЛЬКО за натуральные ресурсы. Поставленные игроком блоки, мобы из спавнеров и яиц призыва — XP не дают.
+- [Features](#-features)
+- [XP sources](#-xp-sources)
+- [Commands and permissions](#-commands-and-permissions)
+- [Placeholders (PlaceholderAPI)](#-placeholders-placeholderapi)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Building from source](#-building-from-source)
+- [Requirements](#-requirements)
+- [Project structure](#-project-structure)
+- [FAQ](#-faq)
+- [License](#-license)
 
 ---
 
-## 🎮 Команды и права
+## ✨ Features
 
-### Команды
+- **8 activities** that grant XP (mining, farming, woodcutting, fishing, hunting, exploration, online time, daily bonus)
+- **Flexible leveling system** — the XP formula is configurable in `config.yml`
+- **Cheater protection** — XP is only awarded for naturally generated blocks and mobs
+- **PlaceholderAPI** — integration with TAB, Scoreboards, Chat and other plugins
+- **Fully translatable** — all messages live in the `messages` section of `config.yml`
+- **⚒ Anvil enchant cap** — combining two books in an anvil can never exceed the vanilla enchantment limit (e.g. two Efficiency V books won't give Efficiency VI; over-limit enchants can only be bought with donate currency)
+- **📍 Region ActionBar** — shows the name of the WorldGuard region the player is standing in, colored green if they have access and red if they don't
+- **🔢 Account UID** — every new player gets a sequential account number (1st player = 1, 2nd = 2, …), shown via the `%cubixsmp_uid%` placeholder and stored permanently in `playerdata/`
 
-| Команда | Алиасы | Описание | Право |
-|---------|--------|----------|-------|
-| `/cubixsmp` | `/cs`, `/cubix`, `/csmp` | Показать статистику (уровень, XP, прогресс) | `cubixsmp.user` |
-| `/cubixsmp stats` | | Показать статистику | `cubixsmp.user` |
-| `/cubixsmp daily` | | Получить ежедневный бонус | `cubixsmp.user` |
-| `/cubixsmp sound` | | Вкл/выкл звук получения XP | `cubixsmp.user` |
-| `/cubixsmp leaders` | | Топ игроков по уровню | `cubixsmp.user` |
-| `/cubixsmp reload` | | Перезагрузить конфигурацию | `cubixsmp.reload` |
-| `/cubixsmp admin` | | Админ-команды | `cubixsmp.admin` |
+---
 
-### Админ-команды
+## ⛏ XP sources
+
+| Activity | Description | XP |
+|:--------:|-------------|:--:|
+| ⛏ Mining | Mining ores (coal → ancient debris) | 1–10 XP |
+| 🌾 Farming | Harvesting crops, pumpkins, melons, berries, honey | 0.5–5 XP |
+| 🌲 Woodcutting | Any log (oak, spruce, birch, jungle, acacia, cherry, mangrove, nether stems) | 0.2 XP |
+| 🎣 Fishing | Any caught fish | 5 XP |
+| ⚔ Hunting | Killing mobs (zombie 3 XP, warden 50 XP, wither, etc.) | 1–50 XP |
+| 🚶 Distance | Every 1000 blocks traveled | 5 XP |
+| ⏱ Online time | Every 30 minutes of play | 10 XP |
+| ☀ Daily bonus | Once per day via `/cubixsmp daily` | 50 XP |
+
+> **Important:** XP is ONLY awarded for natural resources. Player-placed blocks, mobs from spawners and spawn eggs grant no XP.
+
+---
+
+## 🎮 Commands and permissions
+
+### Commands
+
+| Command | Aliases | Description | Permission |
+|---------|---------|-------------|------------|
+| `/cubixsmp` | `/cs`, `/cubix`, `/csmp` | Show stats (level, XP, progress) | `cubixsmp.user` |
+| `/cubixsmp stats` | | Show stats | `cubixsmp.user` |
+| `/cubixsmp daily` | | Claim the daily bonus | `cubixsmp.user` |
+| `/cubixsmp sound` | | Toggle XP sound on/off | `cubixsmp.user` |
+| `/cubixsmp leaders` | | Top players by level | `cubixsmp.user` |
+| `/cubixsmp reload` | | Reload the configuration | `cubixsmp.reload` |
+| `/cubixsmp admin` | | Admin commands | `cubixsmp.admin` |
+
+### Admin commands
 
 `/cubixsmp admin <subcommand> [args]`
 
-| Подкоманда | Описание |
-|------------|----------|
-| `info <player>` | Информация об игроке (уровень, XP, время игры) |
-| `setlevel <player> <level>` | Установить уровень |
-| `addxp <player> <amount>` | Добавить XP |
-| `removexp <player> <amount>` | Забрать XP |
-| `reset <player>` | Сбросить прогресс игрока |
+| Subcommand | Description |
+|------------|-------------|
+| `info <player>` | Player info (level, XP, playtime) |
+| `setlevel <player> <level>` | Set a level |
+| `addxp <player> <amount>` | Add XP |
+| `removexp <player> <amount>` | Remove XP |
+| `reset <player>` | Reset a player's progress |
 
-### Права (Permissions)
+### Permissions
 
-| Право | Описание | По умолчанию |
-|-------|----------|:------------:|
-| `cubixsmp.user` | Базовые команды | ✅ true |
-| `cubixsmp.reload` | Перезагрузка конфига | ❌ op |
-| `cubixsmp.admin` | Админ-доступ | ❌ op |
-| `cubixsmp.admin.setlevel` | Установка уровня | ❌ op |
-| `cubixsmp.admin.addxp` | Добавление XP | ❌ op |
-| `cubixsmp.admin.removexp` | Забирание XP | ❌ op |
-| `cubixsmp.admin.reset` | Сброс прогресса | ❌ op |
-| `cubixsmp.admin.info` | Информация об игроке | ❌ op |
+| Permission | Description | Default |
+|------------|-------------|:-------:|
+| `cubixsmp.user` | Basic commands | ✅ true |
+| `cubixsmp.reload` | Reload the config | ❌ op |
+| `cubixsmp.admin` | Admin access | ❌ op |
+| `cubixsmp.admin.setlevel` | Set level | ❌ op |
+| `cubixsmp.admin.addxp` | Add XP | ❌ op |
+| `cubixsmp.admin.removexp` | Remove XP | ❌ op |
+| `cubixsmp.admin.reset` | Reset progress | ❌ op |
+| `cubixsmp.admin.info` | Player info | ❌ op |
 
 ---
 
-## 🔌 Плейсхолдеры (PlaceholderAPI)
+## 🔌 Placeholders (PlaceholderAPI)
 
-Если на сервере установлен PlaceholderAPI, доступны следующие плейсхолдеры:
+If PlaceholderAPI is installed on the server, the following placeholders are available:
 
-| Плейсхолдер | Описание | Пример |
-|-------------|----------|--------|
-| `%cubixsmp_level%` | Текущий уровень игрока | `42` |
-| `%cubixsmp_xp%` | Текущий опыт | `150` |
-| `%cubixsmp_level_xp_needed%` | Опыта до следующего уровня | `200` |
-| `%cubixsmp_level_progress%` | Процент прогресса | `42%` |
-| `%cubixsmp_level_playtime%` | Общее время игры | `3ч 15мин` |
-| `%cubixsmp_action%` | Последнее действие | `Mining` |
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `%cubixsmp_uid%` | Player's account number (1st player = 1, 2nd = 2, …) | `7` |
+| `%cubixsmp_level%` | Player's current level | `42` |
+| `%cubixsmp_xp%` | Current XP | `150` |
+| `%cubixsmp_level_xp_needed%` | XP needed for the next level | `200` |
+| `%cubixsmp_level_progress%` | Progress percentage | `42%` |
+| `%cubixsmp_level_playtime%` | Total playtime | `3h 15m` |
+| `%cubixsmp_action%` | Last action | `Mining` |
 
-### Примеры использования
+### Usage examples
 
-**В TAB (Nametag):**
+**In TAB (Nametag):**
 ```
-%cubixsmp_level% §7Уровень
+%cubixsmp_level% §7Level
 ```
-→ `§e42 §7Уровень`
+→ `§e42 §7Level`
 
-**В Scoreboard:**
+**In a Scoreboard:**
 ```
 §7XP: %cubixsmp_xp%§7/§a%cubixsmp_level_xp_needed%
 ```
 → `§7XP: §e150§7/§a200`
 
-**В чате:**
+**In chat:**
 ```
 §7[§6⚡%cubixsmp_level%§7] §f%player_name%
 ```
@@ -125,33 +131,35 @@
 
 ---
 
-## 📦 Установка
+## 📦 Installation
 
-1. Скачайте `CubixSMP-1.2.jar` со [страницы релизов](https://github.com/rizer001/CubixSMP/releases)
-2. Поместите JAR в папку `plugins/` вашего сервера
-3. (Опционально) Установите **PlaceholderAPI** для поддержки плейсхолдеров
-4. Перезапустите сервер или выполните `/reload`
-5. Настройте XP значения в `plugins/CubixSMP/config.yml`
-6. Выполните `/cubixsmp reload` для применения изменений
+1. Download `CubixSMP-1.2.1.jar` from the [releases page](https://github.com/rizer001/CubixSMP/releases)
+2. Place the JAR in your server's `plugins/` folder
+3. (Optional) Install **PlaceholderAPI** for placeholder support
+4. Restart the server or run `/reload`
+5. Configure the XP values in `plugins/CubixSMP/config.yml`
+6. Run `/cubixsmp reload` to apply the changes
 
 ---
 
-## ⚙ Конфигурация
+## ⚙ Configuration
 
-Все настройки XP находятся в `config.yml`. Структура файла:
+All XP settings are in `config.yml`. File structure:
 
 ```yaml
 settings:
-  xp-base: 100                # XP для уровня 0→1
-  xp-multiplier: 1.5          # Каждый уровень требует (base + level × multiplier) XP
-  max-level: 100              # Максимальный уровень
-  distance-interval: 1000     # Блоков на один тик XP
-  xp-per-distance-interval: 5 # XP за интервал
-  playtime-interval: 1800     # Секунд на один тик XP
+  xp-base: 100                # XP for level 0→1
+  xp-multiplier: 1.5          # Each level requires (base + level × multiplier) XP
+  min-level: 1                # Starting level
+  min-level-xp: 100           # XP for the first level-up (min-level → min-level+1)
+  max-level: 100              # Maximum level
+  distance-interval: 1000     # Blocks per XP tick
+  xp-per-distance-interval: 5 # XP per interval
+  playtime-interval: 1800     # Seconds per XP tick
   xp-per-playtime-interval: 10
-  daily-bonus-xp: 50          # XP за ежедневный бонус
-  use-actionbar: true         # true = actionbar, false = чат
-  leaders-limit: 10           # Игроков в топе
+  daily-bonus-xp: 50          # XP for the daily bonus
+  use-actionbar: true         # true = actionbar, false = chat
+  leaders-limit: 10           # Players in the leaderboard
 
 mining:
   enabled: true
@@ -184,20 +192,32 @@ hunting:
     ZOMBIE: 3.0
     CREEPER: 4.0
     WARDEN: 50.0
+
+anvil:
+  enabled: true               # Cap enchant levels at the vanilla max in the anvil
+
+region-actionbar:
+  enabled: true               # Show the current WorldGuard region in the ActionBar
+  message-with-access: "§7Region §a{region}"        # {region} — region name
+  message-without-access: "§7Region §c{region}"
+
+uid:
+  enabled: true               # Assign a sequential account number to every new player
+  starting-number: 1          # First assigned number (e.g. 2 → 2, 3, 4, …)
 ```
 
-**Формула XP на уровень:**
+**XP formula per level:**
 ```
-XP_нужно = xp-base + (текущий_уровень × xp-multiplier)
+XP_needed = xp-base + (current_level × xp-multiplier)
 
-Уровень 0→1:  100 + (0 × 1.5)  = 100  XP
-Уровень 1→2:  100 + (1 × 1.5)  = 101.5 XP
-Уровень 99→100: 100 + (99 × 1.5) = 248.5 XP
+Level 0→1:  100 + (0 × 1.5)  = 100  XP
+Level 1→2:  100 + (1 × 1.5)  = 101.5 XP
+Level 99→100: 100 + (99 × 1.5) = 248.5 XP
 ```
 
 ---
 
-## 🔨 Сборка из исходников
+## 🔨 Building from source
 
 ```bash
 git clone https://github.com/rizer001/CubixSMP.git
@@ -205,94 +225,112 @@ cd CubixSMP
 ./gradlew shadowJar
 ```
 
-Результат: `build/libs/CubixSMP-1.2.jar` (также копируется в `Jar/CubixSMP-1.2.jar`)
+Result: `build/libs/CubixSMP-1.2.1.jar` (also copied to `Jar/CubixSMP-1.2.1.jar`)
 
 ---
 
-## 📋 Требования
+## 📋 Requirements
 
-- **Сервер:** Paper 1.21.4 (или его форки: Purpur, Pufferfish и т.д.)
+- **Server:** Paper 1.21.4 (or its forks: Purpur, Pufferfish, etc.)
 - **Java:** 21+
-- **Опционально:** PlaceholderAPI 2.11+
+- **Optional:** PlaceholderAPI 2.11+ — placeholders
+- **Optional:** WorldGuard 7.0.13+ — region ActionBar
 
 ---
 
-## 📁 Структура проекта
+## 📁 Project structure
 
 ```
 CubixSMP/
-├── build.gradle              — Система сборки (Gradle + Shadow)
+├── build.gradle              — Build system (Gradle + Shadow)
 ├── settings.gradle
 ├── gradlew / gradlew.bat     — Gradle Wrapper
 ├── src/main/java/com/cubixsmp/
-│   ├── CubixSMP.java              — Main класс
-│   ├── CubixSMPCommand.java       — Обработчик команд
-│   ├── CubixSMPTabCompleter.java  — Таб-комплитер
-│   ├── CubixSMPPlaceholderExpansion.java — Плейсхолдеры PAPI
-│   ├── LevelManager.java          — Менеджер уровней/XP
-│   ├── PlayerDataManager.java     — Сохранение данных игроков (YAML)
-│   ├── NaturalCheck.java          — Проверка натуральности блоков/мобов
-│   ├── MessagesManager.java       — Управление сообщениями
-│   ├── ConfigGuideManager.java    — Управление plugin-guide.txt
-│   ├── PlacedBlockTracker.java    — Трекер поставленных блоков (PDC чанков)
+│   ├── CubixSMP.java              — Main class
+│   ├── CubixSMPCommand.java       — Command handler
+│   ├── CubixSMPTabCompleter.java  — Tab completer
+│   ├── CubixSMPPlaceholderExpansion.java — PAPI placeholders
+│   ├── LevelManager.java          — Level/XP manager
+│   ├── PlayerDataManager.java     — Player data storage (YAML)
+│   ├── NaturalCheck.java          — Natural block/mob checks
+│   ├── MessagesManager.java       — Message management
+│   ├── ConfigGuideManager.java    — plugin-guide.txt management
+│   ├── PlacedBlockTracker.java    — Placed block tracker (chunk PDC)
+│   ├── PingSettingsManager.java   — Ping sound settings
+│   ├── PlaytimeTracker.java       — Daily playtime tracker
 │   └── listeners/
-│       ├── MiningListener.java    — Шахтёрство
-│       ├── FarmingListener.java   — Фермерство
-│       ├── WoodcuttingListener.java — Рубка деревьев
-│       ├── FishingListener.java   — Рыбалка
-│       ├── HuntingListener.java   — Охота
-│       ├── DistanceListener.java  — Дистанция
-│       ├── PlaytimeListener.java  — Время онлайн
-│       └── DailyBonusListener.java — Ежедневный бонус
+│       ├── MiningListener.java        — Mining
+│       ├── FarmingListener.java       — Farming
+│       ├── WoodcuttingListener.java   — Woodcutting
+│       ├── FishingListener.java       — Fishing
+│       ├── HuntingListener.java       — Hunting
+│       ├── DistanceListener.java      — Distance
+│       ├── PlaytimeListener.java      — Online time
+│       ├── DailyBonusListener.java    — Daily bonus
+│       ├── ChatMentionListener.java   — @ping in chat
+│       ├── ChatPlaceholderListener.java — Per-player chat placeholders
+│       ├── LeafDurabilityListener.java — Axes don't lose durability on leaves
+│       ├── FarmlandTrampleListener.java — No farmland trampling
+│       ├── AnvilEnchantListener.java  — Vanilla enchant cap in the anvil
+│       └── RegionActionBarListener.java — WorldGuard region in the ActionBar
 ├── src/main/resources/
-│   ├── plugin.yml              — Описание плагина
-│   ├── config.yml              — Конфигурация XP
-│   ├── messages.yml            — Сообщения (переводимые)
-│   └── plugin-guide.txt        — Ссылка на README
-└── Jar/                        — Готовые сборки
+│   ├── plugin.yml              — Plugin description
+│   ├── config.yml              — XP configuration and messages
+│   └── plugin-guide.txt        — Link to the README
+└── Jar/                        — Ready-to-use builds
 ```
 
-### Зависимости
+### Dependencies
 
 - `io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT` (compileOnly)
-- `me.clip:placeholderapi:2.11.6` (compileOnly, опционально)
+- `me.clip:placeholderapi:2.11.6` (compileOnly, optional)
+- `com.sk89q.worldguard:worldguard-bukkit:7.0.14` (compileOnly, optional)
 
 ---
 
-## ❓ Часто задаваемые вопросы
+## ❓ FAQ
 
-**Q: Почему XP не начисляется за руду?**
-A: Проверьте включена ли секция (`enabled: true`). Убедитесь что руда натуральная (вокруг неё камень, а не пустота/воздух). Deepslate варианты руд должны быть в config.yml отдельно.
+**Q: Why am I not getting XP for ore?**
+A: Check that the section is enabled (`enabled: true`). Make sure the ore is natural (surrounded by stone, not air). Deepslate ore variants must be listed in `config.yml` separately.
 
-**Q: Можно ли добавить XP за новые блоки/мобов?**
-A: Да! Просто добавьте `MATERIAL_NAME: XP` в соответствующую секцию config.yml и выполните `/cubixsmp reload`.
+**Q: Can I add XP for new blocks/mobs?**
+A: Yes! Just add `MATERIAL_NAME: XP` to the corresponding `config.yml` section and run `/cubixsmp reload`.
 
-**Q: Работает ли плагин на Spigot/CraftBukkit?**
-A: Нет, требуется Paper 1.21.4 или его форк. На Spigot проверка натуральности мобов будет работать с ограничениями.
+**Q: Does the plugin work on Spigot/CraftBukkit?**
+A: No, Paper 1.21.4 or a fork is required. On Spigot the mob naturalness check will work with limitations.
 
-**Q: Как сбросить прогресс игрока?**
-A: Удалите файл `playerdata/<UUID игрока>.yml` и перезагрузите плагин.
+**Q: How do I reset a player's progress?**
+A: Delete the file `playerdata/<player UUID>.yml` and reload the plugin.
 
-**Q: Почему плейсхолдеры не работают?**
-A: Убедитесь что PlaceholderAPI установлен. Выполните `/papi info CubixSMP`. Если расширение не зарегистрировано — перезагрузите сервер.
+**Q: Why aren't the placeholders working?**
+A: Make sure PlaceholderAPI is installed. Run `/papi info CubixSMP`. If the expansion isn't registered — restart the server.
 
-**Q: Как изменить XP за определённое действие?**
-A: Отредактируйте `config.yml`. Для руд — `mining.blocks.MATERIAL: XP`. Для мобов — `hunting.mobs.ENTITY_TYPE: XP`. Выполните `/cubixsmp reload`.
+**Q: How do I change XP for a specific activity?**
+A: Edit `config.yml`. For ores — `mining.blocks.MATERIAL: XP`. For mobs — `hunting.mobs.ENTITY_TYPE: XP`. Then run `/cubixsmp reload`.
 
-**Q: Безопасен ли плагин от читеров?**
-A: Плагин использует несколько методов проверки: трекер поставленных блоков (PDC чанков), статический анализ окружения (натуральный камень/листва), Paper API для причины спавна мобов + fallback на поиск спавнеров в соседних чанках.
+**Q: Is the plugin cheater-proof?**
+A: The plugin uses several checks: a placed-block tracker (chunk PDC), static environment analysis (natural stone/leaves), the Paper API for mob spawn reasons, plus a fallback that searches for spawners in nearby chunks.
+
+**Q: Why don't I see the region name in the ActionBar?**
+A: The region ActionBar requires **WorldGuard** to be installed. Make sure it's present in `plugins/` and that `region-actionbar.enabled` is `true` in `config.yml`.
+
+**Q: Why can't I combine two Efficiency V books into Efficiency VI?**
+A: That's intended — the anvil is capped at the vanilla enchantment limit. Enchantments above the vanilla max (e.g. Efficiency VI) can only be obtained by buying them with donate currency.
+
+**Q: What is the player's account number (UID) and how do I change the starting one?**
+A: Every new player gets a sequential account number shown by `%cubixsmp_uid%` — it is not their Minecraft UUID. Set the starting number in `config.yml` (`uid.starting-number`); numbers are saved permanently in the player's `playerdata/<UUID>.yml` file and never change.
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
-Этот проект распространяется под лицензией **GNU Affero General Public License v3.0**.  
-Полный текст лицензии находится в файле [LICENSE](./LICENSE).
+This project is distributed under the **GNU Affero General Public License v3.0**.  
+The full license text can be found in the [LICENSE](./LICENSE) file.
 
 Copyright © 2026 rizer001
 
 ---
 
 <p align="center">
-  <b>⚡ Спасибо за использование CubixSMP! Удачи на сервере! ⚡</b>
+  <b>⚡ Thank you for using CubixSMP! Have fun on your server! ⚡</b>
 </p>

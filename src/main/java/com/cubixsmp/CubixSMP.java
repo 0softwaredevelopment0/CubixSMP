@@ -67,10 +67,23 @@ public final class CubixSMP extends JavaPlugin {
         // 🔄 ChatPlaceholderListener — пер-плеерные плейсхолдеры в чате
         getServer().getPluginManager().registerEvents(new ChatPlaceholderListener(this), this);
 
+        // ⚒ AnvilEnchantListener — запрет зачарований выше ванильного лимита в наковальне
+        getServer().getPluginManager().registerEvents(new AnvilEnchantListener(this), this);
+
+        // 💀 DeathMessageListener — сообщение с координатами смерти в чат
+        getServer().getPluginManager().registerEvents(new DeathMessageListener(this), this);
+
+        // 📍 RegionActionBarListener — регион WorldGuard в ActionBar (если WG установлен)
+        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            getServer().getPluginManager().registerEvents(new RegionActionBarListener(this), this);
+            getLogger().info("WorldGuard found — region actionbar enabled");
+        } else {
+            getLogger().info("WorldGuard not found — region actionbar disabled");
+        }
+
         // Register commands + tab completers
         getCommand("cubixsmp").setExecutor(new CubixSMPCommand(this));
         getCommand("cubixsmp").setTabCompleter(new CubixSMPTabCompleter());
-        getCommand("checkonline").setExecutor((sender, command, label, args) -> playtimeTracker.handleCheckOnline(sender, args));
 
         // PlaceholderAPI hook
         this.hasPlaceholderAPI = getServer().getPluginManager().getPlugin("PlaceholderAPI") != null;
@@ -110,8 +123,7 @@ public final class CubixSMP extends JavaPlugin {
     }
 
     private void tickPlaytime() {
-        if (!getConfig().getBoolean("settings.playtime-interval", true)) return;
-        int interval = getConfig().getInt("settings.playtime-interval", 1800); // seconds
+        if (!getConfig().getBoolean("settings.playtime-xp-enabled", true)) return;
         for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
             playerDataManager.addPlaytime(player.getUniqueId(), 60); // 60 seconds per tick
         }
@@ -124,6 +136,7 @@ public final class CubixSMP extends JavaPlugin {
     public NaturalCheck getNaturalCheck() { return naturalCheck; }
     public PlacedBlockTracker getPlacedBlockTracker() { return placedBlockTracker; }
     public PingSettingsManager getPingSettings() { return pingSettings; }
+    public PlaytimeTracker getPlaytimeTracker() { return playtimeTracker; }
     public CubixSMPPlaceholderExpansion getPlaceholderExpansion() { return placeholderExpansion; }
     public boolean hasPlaceholderAPI() { return hasPlaceholderAPI; }
 

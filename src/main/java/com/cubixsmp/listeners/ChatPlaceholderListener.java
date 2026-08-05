@@ -1,6 +1,7 @@
 package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
+import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -8,22 +9,22 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Заменяет плейсхолдеры %cubixsmp_...% в чате на значения,
+ * Заменяет ВСЕ PAPI плейсхолдеры (%any_placeholder%) в чате на значения,
  * соответствующие КАЖДОМУ получателю сообщения.
  *
- * Например, игрок пишет "Мой уровень %cubixsmp_level%"
- * — каждый, кто видит это сообщение, увидит СВОЙ уровень.
+ * Например, игрок пишет "Мой уровень %cubixsmp_level%, баланс %vault_eco_balance%"
+ * — каждый, кто видит это сообщение, увидит СВОИ значения.
  *
  * Настройка: chat-placeholders в config.yml
  */
 public class ChatPlaceholderListener implements Listener {
 
     private final CubixSMP plugin;
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("%cubixsmp_(\\w+)%");
+    /** Любой %текст% — стандартный формат PAPI */
+    private static final Pattern HAS_PLACEHOLDER = Pattern.compile("%[^%]+%");
     private static final String CFG = "chat-placeholders.";
 
     public ChatPlaceholderListener(CubixSMP plugin) {
@@ -35,8 +36,10 @@ public class ChatPlaceholderListener implements Listener {
         if (!plugin.getConfig().getBoolean(CFG + "enabled", true)) return;
 
         String raw = event.getMessage();
-        Matcher matcher = PLACEHOLDER_PATTERN.matcher(raw);
-        if (!matcher.find()) return;
+        if (!HAS_PLACEHOLDER.matcher(raw).find()) return;
+
+        // Если PAPI не установлен — не трогаем событие
+        if (!plugin.hasPlaceholderAPI()) return;
 
         // Отменяем стандартную рассылку — будем отправлять сами
         event.setCancelled(true);
@@ -45,44 +48,21 @@ public class ChatPlaceholderListener implements Listener {
         String format = event.getFormat();
         Player[] recipients = Bukkit.getOnlinePlayers().toArray(new Player[0]);
 
-        // Переключаемся на главный поток — все Bukkit API вызовы там
+        // Переключаемся на главный поток — PlaceholderAPI.setPlaceholders() и sendMessage() там
         Bukkit.getScheduler().runTask(plugin, () -> {
-            // Отправляем каждому получателю с его значениями
             for (Player recipient : recipients) {
-                String resolved = replacePlaceholders(raw, recipient);
+                // PlaceholderAPI.setPlaceholders() resolves ВСЕ зарегистрированные плейсхолдеры
+                String resolved = PlaceholderAPI.setPlaceholders(recipient, raw);
                 String msg = format.replace("%1$s", sender.getDisplayName())
                                    .replace("%2$s", resolved);
                 recipient.sendMessage(msg);
             }
 
             // Лог в консоль (с значениями отправителя)
-            String consoleMsg = replacePlaceholders(raw, sender);
+            String consoleMsg = PlaceholderAPI.setPlaceholders(sender, raw);
             String logMsg = format.replace("%1$s", sender.getDisplayName())
                                   .replace("%2$s", consoleMsg);
             Bukkit.getConsoleSender().sendMessage(logMsg);
         });
-    }
-
-    /**
-     * Заменяет все %cubixsmp_{param}% в строке на значения для указанного игрока.
-     */
-    private String replacePlaceholders(String message, Player player) {
-        if (!plugin.hasPlaceholderAPI() || plugin.getPlaceholderExpansion() == null) {
-            return message;
-        }
-
-        Matcher matcher = PLACEHOLDER_PATTERN.matcher(message);
-        StringBuffer sb = new StringBuffer();
-        while (matcher.find()) {
-            String param = matcher.group(1);
-            String value = plugin.getPlaceholderExpansion()
-                    .onPlaceholderRequest(player, param);
-            if (value == null) {
-                value = matcher.group(0); // оставляем как есть
-            }
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(value));
-        }
-        matcher.appendTail(sb);
-        return sb.toString();
     }
 }

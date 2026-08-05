@@ -7,17 +7,13 @@ author: rizer001
 
 softdepend:
   - PlaceholderAPI
+  - WorldGuard
 
 commands:
   cubixsmp:
     description: Main CubixSMP command
     aliases: [cs, cubix, csmp]
     permission: cubixsmp.user
-
-  checkonline:
-    description: "Просмотр ежедневного онлайна игрока"
-    aliases: [online, playtime]
-    permission: cubixsmp.checkonline
 
 permissions:
   cubixsmp.user:
@@ -35,6 +31,10 @@ permissions:
   cubixsmp.reload:
     default: op
     description: "Перезагрузка конфига (/cubixsmp reload)"
+
+  cubixsmp.deathmessage:
+    default: false
+    description: "Сообщение с координатами смерти в чат (выдаётся отдельно)"
 
   cubixsmp.admin:
     default: op

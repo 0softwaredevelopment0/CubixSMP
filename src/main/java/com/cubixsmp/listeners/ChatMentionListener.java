@@ -4,7 +4,9 @@ import com.cubixsmp.CubixSMP;
 import com.cubixsmp.MessagesManager;
 import com.cubixsmp.PingSettingsManager;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -55,6 +57,10 @@ public class ChatMentionListener implements Listener {
         StringBuilder parsed = new StringBuilder();
         matcher.reset();
 
+        // Получаем MiniMessage шаблон из конфига
+        String mmFormat = plugin.getConfig().getString(CFG + "mention-format",
+                "<bold><underlined>@<mention></underlined></bold>");
+
         int lastEnd = 0;
         while (matcher.find()) {
             String mention = matcher.group(1);
@@ -63,8 +69,12 @@ public class ChatMentionListener implements Listener {
             List<Player> matched = resolveMention(sender, mention);
             targets.addAll(matched);
 
-            String format = plugin.getConfig().getString(CFG + "mention-format", "&l&n@%s&r");
-            parsed.append(format.replace("%s", mention));
+            // Парсим MiniMessage → Component → LEGACY (§) строка
+            Component formatted = MiniMessage.miniMessage().deserialize(
+                    mmFormat,
+                    Placeholder.parsed("mention", mention)
+            );
+            parsed.append(LegacyComponentSerializer.legacySection().serialize(formatted));
 
             lastEnd = matcher.end();
         }
