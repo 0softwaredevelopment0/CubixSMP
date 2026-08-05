@@ -334,4 +334,3 @@ Copyright © 2026 rizer001
 <p align="center">
   <b>⚡ Thank you for using CubixSMP! Have fun on your server! ⚡</b>
 </p>
-<!-- webhook test -->
