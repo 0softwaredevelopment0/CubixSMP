@@ -45,13 +45,22 @@ public class ChatMentionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChat(AsyncPlayerChatEvent event) {
-        if (!plugin.getConfig().getBoolean(CFG + "enabled", true)) return;
+        // Fallback-путь: если ChatFormatListener выключен (chat-format.enabled: false),
+        // сообщение форматируется здесь. Когда ChatFormatListener активен, он вызывает
+        // formatMessage() сам и отменяет событие раньше, чем сработает этот обработчик.
+        event.setMessage(formatMessage(event.getPlayer(), event.getMessage()));
+    }
 
-        Player sender = event.getPlayer();
-        String raw = event.getMessage();
+    /**
+     * Ищет @пнг в сообщении, выделяет их и запускает звуки пинга.
+     * Возвращает строку с legacy-кодами (§), готовую для отправки в чат.
+     * Если пингов нет (или фича выключена) — возвращает сообщение без изменений.
+     */
+    public String formatMessage(Player sender, String raw) {
+        if (!plugin.getConfig().getBoolean(CFG + "enabled", true)) return raw;
         Matcher matcher = MENTION_PATTERN.matcher(raw);
 
-        if (!matcher.find()) return;
+        if (!matcher.find()) return raw;
 
         List<Player> targets = new ArrayList<>();
         StringBuilder parsed = new StringBuilder();
@@ -80,12 +89,12 @@ public class ChatMentionListener implements Listener {
         }
         parsed.append(raw.substring(lastEnd));
 
-        event.setMessage(parsed.toString());
-
         if (!targets.isEmpty()) {
             Player[] targetArray = targets.toArray(new Player[0]);
             Bukkit.getScheduler().runTask(plugin, () -> playPingSounds(targetArray));
         }
+
+        return parsed.toString();
     }
 
     private List<Player> resolveMention(Player sender, String mention) {

@@ -13,8 +13,12 @@ public final class CubixSMP extends JavaPlugin {
     private NaturalCheck naturalCheck;
     private PlacedBlockTracker placedBlockTracker;
     private CubixSMPPlaceholderExpansion placeholderExpansion;
+    private CustomEnchantManager customEnchantManager;
     private PlaytimeTracker playtimeTracker;
     private PingSettingsManager pingSettings;
+    private ActionMenu actionMenu;
+    private ParticleTrailManager particleTrailManager;
+    private ItemDurabilityManager itemDurabilityManager;
     private boolean hasPlaceholderAPI;
 
     @Override
@@ -23,6 +27,11 @@ public final class CubixSMP extends JavaPlugin {
 
         // Save default config
         saveDefaultConfig();
+
+        // 🔧 Проверка и починка config.yml: недостающие ключи добавляются в конец,
+        // дубликаты удаляются (остаётся последнее значение)
+        ConfigRepair.repair(this);
+        reloadConfig(); // плагин работает уже с починенным файлом
 
         // Init messages & guide
         MessagesManager.init(this);
@@ -33,6 +42,15 @@ public final class CubixSMP extends JavaPlugin {
         this.placedBlockTracker = new PlacedBlockTracker(this);
         this.playerDataManager = new PlayerDataManager(this);
         this.levelManager = new LevelManager(this);
+        this.customEnchantManager = new CustomEnchantManager(this);
+
+        // ✨ ParticleTrailManager — персональные партикл-трейлы (/csmp particle <имя>)
+        this.particleTrailManager = new ParticleTrailManager(this);
+        particleTrailManager.reload(); // читает конфиг и запускает задачу спавна
+
+        // 🔧 ItemDurabilityManager — целостность предметов (прочность в PDC)
+        this.itemDurabilityManager = new ItemDurabilityManager(this);
+        getServer().getPluginManager().registerEvents(itemDurabilityManager, this);
 
         // Register listeners
         getServer().getPluginManager().registerEvents(new MiningListener(this), this);
@@ -61,24 +79,39 @@ public final class CubixSMP extends JavaPlugin {
         getServer().getPluginManager().registerEvents(playtimeTracker, this);
         playtimeTracker.init();
 
-        // 📢 ChatMentionListener — @пнг в чате
-        getServer().getPluginManager().registerEvents(new ChatMentionListener(this, pingSettings), this);
+        // 🖱 ActionMenu — GUI-диалог «Что вы хотите сделать?» (клик по нику в чате)
+        this.actionMenu = new ActionMenu(this);
+        getServer().getPluginManager().registerEvents(actionMenu, this);
 
-        // 🔄 ChatPlaceholderListener — пер-плеерные плейсхолдеры в чате
+        // 💬 ChatFormatListener — miniMessage-права, [item_hand], кликабельные ники.
+        // Регистрируется ПЕРВЫМ: он берёт чат под свой контроль, поэтому @пнг и
+        // плейсхолдеры обрабатываются внутри него (см. ChatMentionListener.formatMessage).
+        ChatMentionListener chatMentionListener = new ChatMentionListener(this, pingSettings);
+        getServer().getPluginManager().registerEvents(new ChatFormatListener(this, chatMentionListener), this);
+
+        // 📢 ChatMentionListener — @пнг в чате
+        getServer().getPluginManager().registerEvents(chatMentionListener, this);
+
+        // 🔄 ChatPlaceholderListener — пер-плеерные плейсхолдеры в чате (fallback, если chat-format выключен)
         getServer().getPluginManager().registerEvents(new ChatPlaceholderListener(this), this);
 
         // ⚒ AnvilEnchantListener — запрет зачарований выше ванильного лимита в наковальне
         getServer().getPluginManager().registerEvents(new AnvilEnchantListener(this), this);
 
+        // ⚡ CustomEnchantListener — спец. зачарования «Бур» и «Автопереплавка»
+        // (крафт книги на верстаке + эффекты при добыче блоков)
+        getServer().getPluginManager().registerEvents(new CustomEnchantCraftListener(this), this);
+        getServer().getPluginManager().registerEvents(new CustomEnchantMiningListener(this), this);
+
         // 💀 DeathMessageListener — сообщение с координатами смерти в чат
         getServer().getPluginManager().registerEvents(new DeathMessageListener(this), this);
 
-        // 📍 RegionActionBarListener — регион WorldGuard в ActionBar (если WG установлен)
+        // 📍 RegionChatListener — сообщения о входе/выходе из региона WorldGuard в чат (если WG установлен)
         if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
-            getServer().getPluginManager().registerEvents(new RegionActionBarListener(this), this);
-            getLogger().info("WorldGuard found — region actionbar enabled");
+            getServer().getPluginManager().registerEvents(new RegionChatListener(this), this);
+            getLogger().info("WorldGuard found — region chat messages enabled");
         } else {
-            getLogger().info("WorldGuard not found — region actionbar disabled");
+            getLogger().info("WorldGuard not found — region chat messages disabled");
         }
 
         // Register commands + tab completers
@@ -102,6 +135,9 @@ public final class CubixSMP extends JavaPlugin {
         // Load all player data
         playerDataManager.loadAll();
 
+        // 📄 Файл списка UID игроков («1. ник», «2. ник», …) — пишется при старте сервера
+        playerDataManager.writeUidListFile();
+
         // Start playtime tracker
         getServer().getScheduler().runTaskTimer(this, this::tickPlaytime, 1200L, 1200L); // every 60s
 
@@ -112,6 +148,9 @@ public final class CubixSMP extends JavaPlugin {
     public void onDisable() {
         if (playtimeTracker != null) {
             playtimeTracker.shutdown();
+        }
+        if (particleTrailManager != null) {
+            particleTrailManager.stopTask();
         }
         if (playerDataManager != null) {
             playerDataManager.saveAll();
@@ -133,11 +172,15 @@ public final class CubixSMP extends JavaPlugin {
     public static CubixSMP getInstance() { return instance; }
     public LevelManager getLevelManager() { return levelManager; }
     public PlayerDataManager getPlayerDataManager() { return playerDataManager; }
+    public CustomEnchantManager getCustomEnchantManager() { return customEnchantManager; }
     public NaturalCheck getNaturalCheck() { return naturalCheck; }
     public PlacedBlockTracker getPlacedBlockTracker() { return placedBlockTracker; }
     public PingSettingsManager getPingSettings() { return pingSettings; }
     public PlaytimeTracker getPlaytimeTracker() { return playtimeTracker; }
+    public ParticleTrailManager getParticleTrailManager() { return particleTrailManager; }
+    public ItemDurabilityManager getItemDurabilityManager() { return itemDurabilityManager; }
     public CubixSMPPlaceholderExpansion getPlaceholderExpansion() { return placeholderExpansion; }
+    public ActionMenu getActionMenu() { return actionMenu; }
     public boolean hasPlaceholderAPI() { return hasPlaceholderAPI; }
 
     public void setLastAction(java.util.UUID uuid, String action) {

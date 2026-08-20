@@ -1,17 +1,14 @@
 package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
-import com.cubixsmp.MessagesManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
-import java.util.List;
-
 /**
- * Reminds players about the daily bonus when they join.
- * The actual claiming is done via /cubixsmp daily.
+ * Автоматически выдаёт ежедневный бонус при ПЕРВОМ входе игрока за день.
+ * Команда /cubixsmp daily больше не нужна — опыт начисляется сам при заходе.
  */
 public class DailyBonusListener implements Listener {
 
@@ -24,18 +21,12 @@ public class DailyBonusListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (plugin.getPlayerDataManager().canClaimDailyBonus(player.getUniqueId())) {
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (player.isOnline()) {
-                    List<String> lines = MessagesManager.getStringList("daily_bonus.available",
-                            List.of("", "§6☀ §eDaily bonus available! §7(/cubixsmp daily)",
-                                    "§7Get §a{amount} XP", ""));
-                    int amount = plugin.getConfig().getInt("settings.daily-bonus-xp", 50);
-                    for (String line : lines) {
-                        player.sendMessage(MessagesManager.replace(line, "amount", String.valueOf(amount)));
-                    }
-                }
-            }, 40L);
-        }
+        // Небольшая задержка, чтобы данные игрока гарантированно загрузились
+        // (PlayerDataManager подгружает их в своём обработчике PlayerJoinEvent).
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline() && plugin.getPlayerDataManager().canClaimDailyBonus(player.getUniqueId())) {
+                plugin.getPlayerDataManager().claimDailyBonus(player.getUniqueId(), player);
+            }
+        }, 40L);
     }
 }

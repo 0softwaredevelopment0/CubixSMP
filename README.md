@@ -2,7 +2,7 @@
 
 ![Development status](https://img.shields.io/badge/status-Stable-brightgreen)
 
-**CubixSMP** — a Paper 1.21.4 plugin that adds an advanced leveling system (Cubix Level) to your SMP server. Players earn experience (XP) for various in-game activities and level up.
+**CubixSMP** — a Paper 26.2 plugin that adds an advanced leveling system (Cubix Level) to your SMP server. Players earn experience (XP) for various in-game activities and level up.
 
 🌍 Originally built for Russian-language SMP servers, but every message is fully translatable via the `messages` section in `config.yml`.
 
@@ -32,8 +32,9 @@
 - **PlaceholderAPI** — integration with TAB, Scoreboards, Chat and other plugins
 - **Fully translatable** — all messages live in the `messages` section of `config.yml`
 - **⚒ Anvil enchant cap** — combining two books in an anvil can never exceed the vanilla enchantment limit (e.g. two Efficiency V books won't give Efficiency VI; over-limit enchants can only be bought with donate currency)
-- **📍 Region ActionBar** — shows the name of the WorldGuard region the player is standing in, colored green if they have access and red if they don't
+- **📍 Region Chat** — sends a chat message when entering/leaving a WorldGuard region («Вы вошли в регион …» / «Вы покидаете регион …»), exactly once per region change — no spam
 - **🔢 Account UID** — every new player gets a sequential account number (1st player = 1, 2nd = 2, …), shown via the `%cubixsmp_uid%` placeholder and stored permanently in `playerdata/`
+- **📻 Chat channels** — local `[L]` / global `[G]` / world `[W]` / admin `[A]`. Switch with a message prefix (default: none / `!` / `$` / `#`), each channel has its own permission, the local channel has a configurable range in blocks, and the admin channel is only visible to players with its permission
 
 ---
 
@@ -92,6 +93,11 @@
 | `cubixsmp.admin.removexp` | Remove XP | ❌ op |
 | `cubixsmp.admin.reset` | Reset progress | ❌ op |
 | `cubixsmp.admin.info` | Player info | ❌ op |
+| `cubixsmp.chat.format` | MiniMessage formatting in chat | ❌ false |
+| `cubixsmp.chat.channel.local` | Send in the local channel `[L]` | ✅ true |
+| `cubixsmp.chat.channel.global` | Send in the global channel `[G]` | ✅ true |
+| `cubixsmp.chat.channel.world` | Send in the world channel `[W]` | ✅ true |
+| `cubixsmp.chat.channel.admin` | Send/view the admin channel `[A]` | ❌ op |
 
 ---
 
@@ -163,6 +169,8 @@ settings:
 
 mining:
   enabled: true
+  silk-touch-no-xp: true   # No XP for ores mined with Silk Touch (anti-farm)
+  debris-always-scrap: true # Ancient Debris always drops netherite scrap, never a block
   blocks:
     COAL_ORE: 1.0
     IRON_ORE: 3.0
@@ -196,14 +204,36 @@ hunting:
 anvil:
   enabled: true               # Cap enchant levels at the vanilla max in the anvil
 
-region-actionbar:
-  enabled: true               # Show the current WorldGuard region in the ActionBar
-  message-with-access: "§7Region §a{region}"        # {region} — region name
-  message-without-access: "§7Region §c{region}"
+region-chat:
+  enabled: true               # Chat message when entering/leaving a WorldGuard region
+  enter-message: "<white>Вы вошли в регион <yellow>{region}</yellow></white>"   # {region} — region name
+  exit-message: "<white>Вы покидаете регион <yellow>{region}</yellow></white>"
 
 uid:
   enabled: true               # Assign a sequential account number to every new player
   starting-number: 1          # First assigned number (e.g. 2 → 2, 3, 4, …)
+
+chat-channels:
+  enabled: true               # Chat channels: local [L] / global [G] / world [W] / admin [A]
+  local-range: 100            # Radius of the local channel in blocks
+  no-permission-message: "<red>У вас нет прав чтобы отправлять сообщение в данный канал, попробуйте позже.</red>"
+  channels:
+    local:
+      prefix: "[L]"           # Channel prefix shown in chat (MiniMessage)
+      message-prefix: ""      # Message prefix to switch to this channel (empty = default channel)
+      permission: "cubixsmp.chat.channel.local"
+    global:
+      prefix: "[G]"
+      message-prefix: "!"     # "!hello" → global channel (all players see it)
+      permission: "cubixsmp.chat.channel.global"
+    world:
+      prefix: "[W]"
+      message-prefix: "$"     # "$hello" → world channel (same world only)
+      permission: "cubixsmp.chat.channel.world"
+    admin:
+      prefix: "[A]"
+      message-prefix: "#"     # "#hello" → admin channel (admin permission only)
+      permission: "cubixsmp.chat.channel.admin"
 ```
 
 **XP formula per level:**
@@ -225,16 +255,16 @@ cd CubixSMP
 ./gradlew shadowJar
 ```
 
-Result: `build/libs/CubixSMP-1.2.1.jar` (also copied to `Jar/CubixSMP-1.2.1.jar`)
+Result: `build/libs/CubixSMP-1.2.1.jar`
 
 ---
 
 ## 📋 Requirements
 
-- **Server:** Paper 1.21.4 (or its forks: Purpur, Pufferfish, etc.)
-- **Java:** 21+
+- **Server:** Paper 26.2 (or its forks: Purpur, Pufferfish, etc.)
+- **Java:** 26
 - **Optional:** PlaceholderAPI 2.11+ — placeholders
-- **Optional:** WorldGuard 7.0.13+ — region ActionBar
+- **Optional:** WorldGuard — region chat messages
 
 ---
 
@@ -257,6 +287,7 @@ CubixSMP/
 │   ├── ConfigGuideManager.java    — plugin-guide.txt management
 │   ├── PlacedBlockTracker.java    — Placed block tracker (chunk PDC)
 │   ├── PingSettingsManager.java   — Ping sound settings
+│   ├── ChatChannel.java           — Chat channels (local/global/world/admin)
 │   ├── PlaytimeTracker.java       — Daily playtime tracker
 │   └── listeners/
 │       ├── MiningListener.java        — Mining
@@ -272,17 +303,17 @@ CubixSMP/
 │       ├── LeafDurabilityListener.java — Axes don't lose durability on leaves
 │       ├── FarmlandTrampleListener.java — No farmland trampling
 │       ├── AnvilEnchantListener.java  — Vanilla enchant cap in the anvil
-│       └── RegionActionBarListener.java — WorldGuard region in the ActionBar
+│       └── RegionChatListener.java     — WorldGuard region enter/exit messages in chat
 ├── src/main/resources/
 │   ├── plugin.yml              — Plugin description
 │   ├── config.yml              — XP configuration and messages
 │   └── plugin-guide.txt        — Link to the README
-└── Jar/                        — Ready-to-use builds
+└── build/libs/                 — Ready-to-use builds
 ```
 
 ### Dependencies
 
-- `io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT` (compileOnly)
+- `io.papermc.paperweight.userdev` + `paperDevBundle("26.2.build.+")` — Paper 26.2 API (Mojang mappings)
 - `me.clip:placeholderapi:2.11.6` (compileOnly, optional)
 - `com.sk89q.worldguard:worldguard-bukkit:7.0.14` (compileOnly, optional)
 
@@ -297,7 +328,7 @@ A: Check that the section is enabled (`enabled: true`). Make sure the ore is nat
 A: Yes! Just add `MATERIAL_NAME: XP` to the corresponding `config.yml` section and run `/cubixsmp reload`.
 
 **Q: Does the plugin work on Spigot/CraftBukkit?**
-A: No, Paper 1.21.4 or a fork is required. On Spigot the mob naturalness check will work with limitations.
+A: No, Paper 26.2 (or a fork: Purpur, Pufferfish) is required. On Spigot the mob naturalness check will work with limitations.
 
 **Q: How do I reset a player's progress?**
 A: Delete the file `playerdata/<player UUID>.yml` and reload the plugin.
@@ -311,8 +342,11 @@ A: Edit `config.yml`. For ores — `mining.blocks.MATERIAL: XP`. For mobs — `h
 **Q: Is the plugin cheater-proof?**
 A: The plugin uses several checks: a placed-block tracker (chunk PDC), static environment analysis (natural stone/leaves), the Paper API for mob spawn reasons, plus a fallback that searches for spawners in nearby chunks.
 
-**Q: Why don't I see the region name in the ActionBar?**
-A: The region ActionBar requires **WorldGuard** to be installed. Make sure it's present in `plugins/` and that `region-actionbar.enabled` is `true` in `config.yml`.
+**Q: Why don't I get region enter/exit chat messages?**
+A: The region chat messages require **WorldGuard** to be installed. Make sure it's present in `plugins/` and that `region-chat.enabled` is `true` in `config.yml`.
+
+**Q: The chat channels don't work — messages always go to the local channel.**
+A: Channels require `chat-format.enabled: true` (the unified chat handler) and `chat-channels.enabled: true`. Check that the message prefix matches exactly (`!`, `$`, `#`) — e.g. `!hello` goes global, `hello` goes local. Also verify the player has the channel permission (`cubixsmp.chat.channel.global` etc.).
 
 **Q: Why can't I combine two Efficiency V books into Efficiency VI?**
 A: That's intended — the anvil is capped at the vanilla enchantment limit. Enchantments above the vanilla max (e.g. Efficiency VI) can only be obtained by buying them with donate currency.

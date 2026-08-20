@@ -15,11 +15,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Запрещает получать зачарования выше ванильного максимума при объединении
- * предметов в наковальне.
+ * Ограничивает зачарования, получаемые в наковальне.
  *
- * <p>Например, две книги «Эффективность V» не дадут «Эффективность VI» —
- * такие зачарования можно получить только за донат-валюту.</p>
+ * <p>Правила:</p>
+ * <ul>
+ *   <li>обычные предметы/книги — результат не может превышать ванильный максимум
+ *       (две книги «Эффективность V» не дадут «VI»);</li>
+ *   <li>донатные предметы (зачарование выше ванильного максимума, например
+ *       «Эффективность VI») — результат не может превышать УРОВЕНЬ ВХОДОВ:
+ *       две донатные книги «Эффективность VI» больше не дают «VII» (было ошибкой),
+ *       а применение донатной книги на предмет работает как раньше.</li>
+ * </ul>
  *
  * <p>Настройки: секция {@code anvil} в config.yml.</p>
  */
@@ -38,30 +44,29 @@ public class AnvilEnchantListener implements Listener {
         ItemStack result = event.getResult();
         if (result == null || result.getType() == Material.AIR) return;
 
-        // Ограничение пропускается только тогда, когда один из входов несёт
-        // зачарование ВЫШЕ ванильного максимума — такие предметы можно получить
-        // только за донат-валюту, их применение/объединение не трогаем.
-        // Во всех остальных случаях (обычные книги и/или предметы) результат
-        // обрезается до ванильного максимума:
-        //   • две книги «Удача III» не дадут книгу с «Удачей IV»;
-        //   • две кирки с «Удачей III» не дадут кирку с «Удачей IV»;
-        //   • книга «Удача III» + кирка с «Удачей III» не дадут «Удачу IV».
         ItemStack first = event.getView().getItem(0);
         ItemStack second = event.getView().getItem(1);
         if (first == null || second == null) return;
-        if (hasAboveVanillaMax(first) || hasAboveVanillaMax(second)) return;
 
-        ItemStack capped = capEnchantments(result);
+        // Потолок для каждого зачарования = max(уровень в 1-м входе,
+        // уровень во 2-м входе, ванильный максимум).
+        //
+        //   • «Эффективность V» + «Эффективность V»  → потолок 5, результат 5 (как раньше);
+        //   • «Эффективность IV» + «Эффективность IV» → потолок 5, результат 5 (как раньше);
+        //   • «Эффективность VI» (донат) + «Эффективность VI» → потолок 6, результат 6 (было 7!);
+        //   • книга «Эффективность VI» + кирка → кирка получает «VI» (применение доната работает).
+        ItemStack capped = capEnchantments(result, first, second);
         if (!capped.equals(result)) {
             event.setResult(capped);
         }
     }
 
     /**
-     * Возвращает копию предмета, у которой все зачарования обрезаны
-     * до ванильного максимального уровня.
+     * Возвращает копию предмета, у которой каждое зачарование обрезано
+     * до потолка {@code max(уровень в первом входе, уровень во втором входе,
+     * ванильный максимум)}.
      */
-    private ItemStack capEnchantments(ItemStack item) {
+    private ItemStack capEnchantments(ItemStack item, ItemStack first, ItemStack second) {
         ItemStack copy = item.clone();
         ItemMeta meta = copy.getItemMeta();
         if (meta == null) return copy;
@@ -76,10 +81,24 @@ public class AnvilEnchantListener implements Listener {
         Map<Enchantment, Integer> capped = new HashMap<>();
         boolean changed = false;
         for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
-            int max = getVanillaMaxLevel(entry.getKey());
-            int level = Math.min(entry.getValue(), max);
+            Enchantment enchantment = entry.getKey();
+            int l1 = getLevel(first, enchantment);
+            int l2 = getLevel(second, enchantment);
+            int vanillaMax = getVanillaMaxLevel(enchantment);
+
+            // Потолок: результат не может быть выше уровня входов и ванильного максимума
+            int ceiling = Math.max(vanillaMax, Math.max(l1, l2));
+            int level = Math.min(entry.getValue(), ceiling);
+
+            // Пол: если ОБА входа несут донатное зачарование (выше ванильного максимума),
+            // результат не может опускаться ниже их уровня — иначе ванильная наковальня
+            // «сложит» две донатные книги VI в V и уничтожит ценность доната.
+            if (l1 > vanillaMax && l2 > vanillaMax) {
+                level = Math.max(level, Math.max(l1, l2));
+            }
+
             if (level != entry.getValue()) changed = true;
-            capped.put(entry.getKey(), level);
+            capped.put(enchantment, level);
         }
 
         if (!changed) return copy;
@@ -103,25 +122,15 @@ public class AnvilEnchantListener implements Listener {
         return copy;
     }
 
-    /**
-     * Есть ли у предмета зачарование выше ванильного максимума
-     * (признак донат-предмета).
-     */
-    private boolean hasAboveVanillaMax(ItemStack item) {
+    /** Уровень зачарования у предмета (учитывает книги-хранилища). */
+    private int getLevel(ItemStack item, Enchantment enchantment) {
+        if (item == null) return 0;
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return false;
-
-        Map<Enchantment, Integer> enchants;
+        if (meta == null) return 0;
         if (meta instanceof EnchantmentStorageMeta storageMeta) {
-            enchants = storageMeta.getStoredEnchants();
-        } else {
-            enchants = meta.getEnchants();
+            return storageMeta.getStoredEnchantLevel(enchantment);
         }
-
-        for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
-            if (entry.getValue() > getVanillaMaxLevel(entry.getKey())) return true;
-        }
-        return false;
+        return meta.getEnchantLevel(enchantment);
     }
 
     private int getVanillaMaxLevel(Enchantment enchantment) {

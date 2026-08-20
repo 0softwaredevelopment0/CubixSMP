@@ -1,9 +1,14 @@
 .gradle
-build/
+# Build output — track only libs/*.jar for easy download
+build/*
+!build/libs/
+build/libs/*
+!build/libs/*.jar
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 .kotlin
+Jar/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

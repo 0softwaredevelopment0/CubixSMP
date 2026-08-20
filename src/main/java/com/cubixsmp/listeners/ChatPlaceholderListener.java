@@ -12,11 +12,16 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import java.util.regex.Pattern;
 
 /**
- * Заменяет ВСЕ PAPI плейсхолдеры (%any_placeholder%) в чате на значения,
- * соответствующие КАЖДОМУ получателю сообщения.
+ * Заменяет ВСЕ PAPI плейсхолдеры (%any_placeholder%) в чате на значения
+ * ОТПРАВИТЕЛЯ — все получатели видят одно и то же.
  *
  * Например, игрок пишет "Мой уровень %cubixsmp_level%, баланс %vault_eco_balance%"
- * — каждый, кто видит это сообщение, увидит СВОИ значения.
+ * — каждый, кто видит это сообщение, увидит уровень и баланс АВТОРА сообщения.
+ *
+ * ⚠ Fallback-путь: когда включён {@code chat-format.enabled} (по умолчанию true),
+ * чат полностью обрабатывает {@link ChatFormatListener} (он первым отменяет событие),
+ * поэтому этот слушатель фактически не срабатывает. Он остаётся как fallback на случай,
+ * если chat-format выключат.
  *
  * Настройка: chat-placeholders в config.yml
  */
@@ -50,19 +55,37 @@ public class ChatPlaceholderListener implements Listener {
 
         // Переключаемся на главный поток — PlaceholderAPI.setPlaceholders() и sendMessage() там
         Bukkit.getScheduler().runTask(plugin, () -> {
-            for (Player recipient : recipients) {
-                // PlaceholderAPI.setPlaceholders() resolves ВСЕ зарегистрированные плейсхолдеры
-                String resolved = PlaceholderAPI.setPlaceholders(recipient, raw);
+            try {
+                // Значения плейсхолдеров — ОТПРАВИТЕЛЯ, одинаковые для всех получателей
+                String resolved = PlaceholderAPI.setPlaceholders(sender, raw);
                 String msg = format.replace("%1$s", sender.getDisplayName())
                                    .replace("%2$s", resolved);
-                recipient.sendMessage(msg);
-            }
+                for (Player recipient : recipients) {
+                    recipient.sendMessage(msg);
+                }
 
-            // Лог в консоль (с значениями отправителя)
-            String consoleMsg = PlaceholderAPI.setPlaceholders(sender, raw);
-            String logMsg = format.replace("%1$s", sender.getDisplayName())
-                                  .replace("%2$s", consoleMsg);
-            Bukkit.getConsoleSender().sendMessage(logMsg);
+                // Лог в консоль (с значениями отправителя)
+                String logMsg = format.replace("%1$s", sender.getDisplayName())
+                                      .replace("%2$s", resolved);
+                Bukkit.getConsoleSender().sendMessage(logMsg);
+            } catch (Exception e) {
+                // Внутренняя ошибка при отправке — уведомляем только отправителя
+                plugin.getLogger().warning("[chat-placeholders] Ошибка отправки сообщения от "
+                        + sender.getName() + ": " + e.getMessage());
+                String errorMsg = plugin.getConfig().getString(
+                        "chat-format.send-error-message",
+                        "<red>Не удалось отправить сообщение в чат из-за внутренней ошибки сервера, попробуйте позже.</red>");
+                sender.sendMessage(deserialize(errorMsg));
+            }
         });
+    }
+
+    /** MiniMessage-строка → Component с fallback на legacy-разбор (битые теги не падают). */
+    private static net.kyori.adventure.text.Component deserialize(String str) {
+        try {
+            return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(str);
+        } catch (Exception e) {
+            return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(str);
+        }
     }
 }

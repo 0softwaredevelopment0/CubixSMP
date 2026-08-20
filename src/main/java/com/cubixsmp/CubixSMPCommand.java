@@ -1,11 +1,17 @@
 package com.cubixsmp;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import java.util.UUID;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.Particle;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import static com.cubixsmp.PlayerDataManager.formatXp;
@@ -34,14 +40,16 @@ public class CubixSMPCommand implements CommandExecutor {
 
         return switch (args[0].toLowerCase()) {
             case "reload" -> handleReload(sender);
-            case "daily" -> handleDaily(sender);
             case "stats" -> handleStats(sender);
+            case "particle" -> handleParticle(sender, args);
             case "admin" -> handleAdmin(sender, args);
             case "sound" -> handleSound(sender);
             case "leaders" -> handleLeaders(sender);
             case "ping" -> handlePing(sender);
             case "checkonline" -> handleCheckOnline(sender, args);
-            default -> handleHelp(sender);
+            case "action" -> handleAction(sender, args);
+            case "help" -> handleHelp(sender, args);
+            default -> handleHelp(sender, args);
         };
     }
 
@@ -52,26 +60,17 @@ public class CubixSMPCommand implements CommandExecutor {
             sender.sendMessage(MessagesManager.getString("general.no_permission", "§c❌ You don't have permission!"));
             return true;
         }
+        // 🔧 Проверка и починка config.yml (недостающие ключи → в конец, дубликаты удаляются)
+        ConfigRepair.repair(plugin);
         plugin.reloadConfig();
         MessagesManager.reload();
         plugin.getLevelManager().reload();
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             plugin.getPlayerDataManager().syncToManagers(p.getUniqueId());
         }
+        plugin.getPlayerDataManager().writeUidListFile();
+        plugin.getParticleTrailManager().reload(); // перечитываем particles.* из конфига
         sender.sendMessage(MessagesManager.getString("general.config_reloaded", "§a✔ Configuration reloaded!"));
-        return true;
-    }
-
-    private boolean handleDaily(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(MessagesManager.getString("general.player_only", "§c❌ Only players can use this command!"));
-            return true;
-        }
-        if (plugin.getPlayerDataManager().canClaimDailyBonus(player.getUniqueId())) {
-            plugin.getPlayerDataManager().claimDailyBonus(player.getUniqueId(), player);
-        } else {
-            player.sendMessage(MessagesManager.getString("general.already_daily", "§c❌ You already claimed daily bonus today!"));
-        }
         return true;
     }
 
@@ -84,26 +83,234 @@ public class CubixSMPCommand implements CommandExecutor {
         return true;
     }
 
-    private boolean handleHelp(CommandSender sender) {
-        if (sender.hasPermission("cubixsmp.admin")) {
-            for (String line : MessagesManager.getStringList("command.help_admin",
-                    List.of("§e/cubixsmp §7— stats", "§e/cubixsmp stats §7— stats",
-                            "§e/cubixsmp daily §7— daily bonus", "§e/cubixsmp sound §7— toggle XP sound",
-                            "§e/cubixsmp leaders §7— top players",
-                            "§e/cubixsmp reload §7— reload config",
-                            "§e/cubixsmp admin §7— admin commands"))) {
-                sender.sendMessage(line);
+    /**
+     * /csmp particle <имя> — персональный трейл частиц вокруг игрока.
+     * /csmp particle off — выключить. /csmp particle list — доступные частицы.
+     */
+    private boolean handleParticle(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(MessagesManager.getString("general.player_only", "§c❌ Only players can use this command!"));
+            return true;
+        }
+        if (!player.hasPermission("cubixsmp.particle")) {
+            sender.sendMessage(MessagesManager.getString("general.no_permission", "§c❌ You don't have permission!"));
+            return true;
+        }
+
+        // Без аргументов — показываем текущий трейл (или подсказку)
+        if (args.length < 2) {
+            String current = plugin.getPlayerDataManager().getParticle(player.getUniqueId());
+            if (current.isEmpty()) {
+                player.sendMessage(MessagesManager.getString("particle.usage",
+                        "§e/csmp particle <имя> §7— трейл частиц, §e/csmp particle off §7— выключить"));
+            } else {
+                player.sendMessage(MessagesManager.format("particle.current",
+                        "§7Текущий трейл: §e{particle}§7. §e/csmp particle off §7— выключить",
+                        "particle", current));
             }
-        } else {
-            sender.sendMessage(MessagesManager.format("command.help_header", "§6CubixSMP §7v{version}",
-                    "version", plugin.getDescription().getVersion()));
-            for (String line : MessagesManager.getStringList("command.help_player",
-                    List.of("§e/cubixsmp §7— stats", "§e/cubixsmp daily §7— daily bonus",
-                            "§e/cubixsmp sound §7— toggle XP sound",
-                            "§e/cubixsmp leaders §7— top players"))) {
-                sender.sendMessage(line);
+            return true;
+        }
+
+        String sub = args[1];
+        if (sub.equalsIgnoreCase("off")) {
+            plugin.getPlayerDataManager().setParticle(player.getUniqueId(), "");
+            player.sendMessage(MessagesManager.getString("particle.off", "§7✔ Партикл-трейл выключен"));
+            return true;
+        }
+
+        if (sub.equalsIgnoreCase("list")) {
+            showParticleList(player);
+            return true;
+        }
+
+        // Проверяем, что частица существует
+        Particle particle = ParticleTrailManager.resolve(sub);
+        if (particle == null) {
+            player.sendMessage(MessagesManager.format("particle.invalid",
+                    "§c❌ Частица §e{particle} §cне найдена!", "particle", sub));
+            return true;
+        }
+
+        // Частицы, требующие данные (dust, block, item и т.п.), трейлом быть не могут
+        if (particle.getDataType() != Void.class) {
+            player.sendMessage(MessagesManager.format("particle.error_requires_data",
+                    "§c❌ Эта частица требует специальные данные и не может быть трейлом!",
+                    "particle", sub));
+            return true;
+        }
+
+        // Проверка списка разрешённых частиц (particles.allowed в конфиге)
+        String norm = ParticleTrailManager.normalize(sub);
+        List<String> allowed = plugin.getConfig().getStringList("particles.allowed");
+        boolean inList = false;
+        for (String a : allowed) {
+            if (ParticleTrailManager.normalize(a).equals(norm)) {
+                inList = true;
+                break;
             }
         }
+        if (!allowed.isEmpty() && !inList && !player.hasPermission("cubixsmp.particle.any")) {
+            player.sendMessage(MessagesManager.format("particle.not_allowed",
+                    "§c❌ Частица §e{particle} §cнедоступна! Используйте §e/csmp particle list",
+                    "particle", sub));
+            return true;
+        }
+
+        plugin.getPlayerDataManager().setParticle(player.getUniqueId(), norm);
+        player.sendMessage(MessagesManager.format("particle.on",
+                "§a✔ Партикл-трейл включён: §e{particle}", "particle", norm));
+        return true;
+    }
+
+    /** Показывает список доступных игроку частиц. */
+    private void showParticleList(Player player) {
+        player.sendMessage(MessagesManager.getString("particle.list_header", "§6Доступные частицы:"));
+        List<String> allowed = plugin.getConfig().getStringList("particles.allowed");
+        if (allowed.isEmpty()) {
+            player.sendMessage(MessagesManager.getString("particle.list_all",
+                    "§7Разрешены все простые частицы (note, rain, end_rod, flame, heart...). §e/csmp particle <имя>"));
+        } else {
+            for (String a : allowed) {
+                player.sendMessage("§7- §f" + a);
+            }
+        }
+        player.sendMessage(MessagesManager.getString("particle.list_off", "§7/csmp particle off §7— выключить"));
+    }
+
+    /**
+     * /csmp help [страница] — список всех команд с пагинацией.
+     * Внизу — кнопки [<] [>] (кликабельные) и счётчик «страница/всего страниц».
+     */
+    private boolean handleHelp(CommandSender sender, String[] args) {
+        List<String> commands;
+        if (sender.hasPermission("cubixsmp.admin")) {
+            commands = new java.util.ArrayList<>(MessagesManager.getStringList("command.help_admin",
+                    List.of("§e/csmp §7— статистика (уровень, XP)",
+                            "§e/csmp stats §7— статистика",
+                            "§e/csmp particle <имя> §7— партикл-трейл",
+
+                            "§e/csmp sound §7— вкл/выкл звук XP",
+                            "§e/csmp leaders §7— топ игроков",
+                            "§e/csmp ping §7— вкл/выкл звук пинга",
+                            "§e/csmp checkonline §7— статистика онлайна",
+                            "§e/csmp help §7— эта помощь",
+                            "§e/csmp reload §7— перезагрузить конфиг",
+                            "§e/csmp admin §7— админ-команды")));
+        } else {
+            commands = new java.util.ArrayList<>(MessagesManager.getStringList("command.help_player",
+                    List.of("§e/csmp §7— статистика (уровень, XP)",
+                            "§e/csmp stats §7— статистика",
+                            "§e/csmp particle <имя> §7— партикл-трейл",
+
+                            "§e/csmp sound §7— вкл/выкл звук XP",
+                            "§e/csmp leaders §7— топ игроков",
+                            "§e/csmp ping §7— вкл/выкл звук пинга",
+                            "§e/csmp checkonline §7— статистика онлайна",
+                            "§e/csmp help §7— эта помощь")));
+        }
+
+        int pageSize = plugin.getConfig().getInt("settings.help-page-size", 6);
+        int page = 1;
+        if (args.length > 1) {
+            try {
+                page = Integer.parseInt(args[1]);
+            } catch (NumberFormatException ignored) {
+                // не число — остаёмся на первой странице
+            }
+        }
+        int maxPage = Math.max(1, (commands.size() + pageSize - 1) / pageSize);
+        page = Math.max(1, Math.min(page, maxPage));
+
+        sender.sendMessage(MessagesManager.format("command.help_header",
+                "§6CubixSMP §7v{version} §8— Помощь",
+                "version", plugin.getDescription().getVersion()));
+
+        int from = (page - 1) * pageSize;
+        int to = Math.min(from + pageSize, commands.size());
+        if (commands.isEmpty()) {
+            sender.sendMessage(MessagesManager.getString("command.help_empty", "§7Команды пока не настроены."));
+        } else {
+            for (int i = from; i < to; i++) {
+                sender.sendMessage(commands.get(i));
+            }
+        }
+
+        String pageLabel = MessagesManager.format("command.help_page_label", "§8Страница §e{page}§7/§e{max}",
+                "page", String.valueOf(page), "max", String.valueOf(maxPage));
+        if (sender instanceof Player player) {
+            Component prev = buildHelpButton(page > 1,
+                    MessagesManager.getString("command.help_prev_button", "§8[<]"),
+                    MessagesManager.getString("command.help_prev_button_active", "§a[<]"),
+                    MessagesManager.getString("command.help_prev_hover", "§7Предыдущая страница"),
+                    "/csmp help " + (page - 1));
+            Component next = buildHelpButton(page < maxPage,
+                    MessagesManager.getString("command.help_next_button", "§8[>]"),
+                    MessagesManager.getString("command.help_next_button_active", "§a[>]"),
+                    MessagesManager.getString("command.help_next_hover", "§7Следующая страница"),
+                    "/csmp help " + (page + 1));
+            player.sendMessage(Component.text(" ")
+                    .append(prev)
+                    .append(LegacyComponentSerializer.legacySection().deserialize(pageLabel))
+                    .append(next));
+        } else {
+            sender.sendMessage(pageLabel);
+        }
+        return true;
+    }
+
+    /**
+     * Кликабельная кнопка пагинации. Если disabled — серый текст без действия.
+     */
+    private Component buildHelpButton(boolean enabled, String disabledText, String enabledText,
+                                      String hover, String command) {
+        if (!enabled) {
+            return LegacyComponentSerializer.legacySection().deserialize(disabledText);
+        }
+        return LegacyComponentSerializer.legacySection().deserialize(enabledText)
+                .hoverEvent(HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(hover)))
+                .clickEvent(ClickEvent.runCommand(command));
+    }
+
+    // ─── Меню действий по клику на сообщение ────
+    // Анти-спам: КД между открытиями меню (1 сек по умолчанию)
+    private final java.util.Map<UUID, Long> actionCooldowns = new java.util.HashMap<>();
+
+    /**
+     * /csmp action <игрок> — открывает GUI-диалог «Что вы хотите сделать?»
+     * с кнопками [ЛС], [TPA] и [Отмена] (см. {@link ActionMenu}).
+     * Вызывается кликом по НИКУ отправителя в чате.
+     * Анти-спам: КД из chat-format.click-menu-cooldown (по умолчанию 1000 мс).
+     */
+    private boolean handleAction(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(MessagesManager.getString("general.player_only", "§c❌ Only players can use this command!"));
+            return true;
+        }
+        if (args.length < 2) {
+            player.sendMessage(MessagesManager.getString("command.action_usage", "§c❌ Использование: §e/csmp action <игрок>"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            player.sendMessage(MessagesManager.format("general.player_not_found", "§c❌ Player §e{player} §cnot found!", "player", args[1]));
+            return true;
+        }
+
+        // Анти-спам: КД 1 секунда (настраивается в chat-format.click-menu-cooldown)
+        long cooldown = plugin.getConfig().getLong("chat-format.click-menu-cooldown", 1000);
+        long now = System.currentTimeMillis();
+        actionCooldowns.entrySet().removeIf(e -> now - e.getValue() > cooldown);
+        Long last = actionCooldowns.get(player.getUniqueId());
+        if (last != null && now - last < cooldown) {
+            long seconds = (cooldown - (now - last) + 999) / 1000;
+            player.sendMessage(MessagesManager.format("command.action_cooldown", "§c❌ Подождите §e{time} §cсек!",
+                    "time", String.valueOf(seconds)));
+            return true;
+        }
+        actionCooldowns.put(player.getUniqueId(), now);
+
+        plugin.getActionMenu().open(player, target);
         return true;
     }
 
@@ -126,6 +333,7 @@ public class CubixSMPCommand implements CommandExecutor {
             case "removexp" -> handleRemoveXp(sender, args);
             case "reset" -> handleReset(sender, args);
             case "info" -> handleInfo(sender, args);
+            case "giveenchant" -> handleGiveEnchant(sender, args);
             default -> {
                 sender.sendMessage(MessagesManager.getString("admin.unknown_subcommand", "§c❌ Unknown subcommand!"));
                 showAdminHelp(sender);
@@ -140,7 +348,7 @@ public class CubixSMPCommand implements CommandExecutor {
         sender.sendMessage(MessagesManager.getString("admin.help_footer", "§6╚═══════════════════════════════╝"));
         for (String line : MessagesManager.getStringList("admin.help_commands",List.of("§e/cs admin info <player>", "§e/cs admin setlevel <player> <level>",
                             "§e/cs admin addxp <player> <amount>", "§e/cs admin removexp <player> <amount>",
-                            "§e/cs admin reset <player>"))) {
+                            "§e/cs admin reset <player>", "§e/cs admin giveenchant <player> <bur|autosmelt>"))) {
             sender.sendMessage(line);
         }
     }
@@ -367,6 +575,61 @@ public class CubixSMPCommand implements CommandExecutor {
         sender.sendMessage(MessagesManager.format("admin.info_playtime", "§ePlaytime: §f{playtime}", "playtime", playtime));
         sender.sendMessage(MessagesManager.format("admin.info_progress_bar", "§eProgress: §f{progress}",
                 "progress", progressBar(progressPercent)));
+        return true;
+    }
+
+    /**
+     * /cubixsmp admin giveenchant <player> <bur|autosmelt> [count]
+     * Выдаёт игроку спец. зачарованную книгу (Бур / Автопереплавка) с PDC.
+     * Применяется на верстаке: инструмент + книга.
+     */
+    private boolean handleGiveEnchant(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("cubixsmp.admin.giveenchant") && !sender.hasPermission("cubixsmp.admin")) {
+            sender.sendMessage(MessagesManager.getString("general.no_permission", "§c❌ No permission!"));
+            return true;
+        }
+        if (args.length < 4) {
+            sender.sendMessage(MessagesManager.getString("admin.giveenchant_usage",
+                    "§c❌ Использование: §e/cubixsmp admin giveenchant <player> <bur|autosmelt> [count]"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[2]);
+        if (target == null) {
+            sender.sendMessage(MessagesManager.format("general.player_not_found", "§c❌ Player §e{player} §cnot found!",
+                    "player", args[2]));
+            return true;
+        }
+
+        CustomEnchantType type = CustomEnchantType.fromId(args[3]);
+        if (type == null) {
+            sender.sendMessage(MessagesManager.format("admin.giveenchant_unknown",
+                    "§c❌ Неизвестное зачарование §e{enchant}§c. Доступны: §ebur, autosmelt",
+                    "enchant", args[3]));
+            return true;
+        }
+
+        int count = 1;
+        if (args.length >= 5) {
+            try {
+                count = Math.max(1, Math.min(64, Integer.parseInt(args[4])));
+            } catch (NumberFormatException ignored) {
+                // не число — остаётся 1
+            }
+        }
+
+        ItemStack book = plugin.getCustomEnchantManager().createBook(type);
+        book.setAmount(count);
+        java.util.Map<Integer, ItemStack> leftover = target.getInventory().addItem(book);
+        for (ItemStack rest : leftover.values()) {
+            target.getWorld().dropItemNaturally(target.getLocation(), rest);
+        }
+
+        sender.sendMessage(MessagesManager.format("admin.giveenchant_success",
+                "§a✔ Игроку §e{target} §aвыдана книга: §f{enchant} §a(§e{amount}§a)",
+                "target", target.getName(),
+                "enchant", plugin.getCustomEnchantManager().displayName(type),
+                "amount", String.valueOf(count)));
         return true;
     }
 

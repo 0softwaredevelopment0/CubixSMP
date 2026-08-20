@@ -1,10 +1,11 @@
 plugins {
     id 'java'
-    id 'com.gradleup.shadow' version '8.3.6'
+    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.21'
+    id 'com.gradleup.shadow' version '9.4.2'
 }
 
 group = 'com.cubixsmp'
-version = '1.2.0'
+version = '1.2.4'
 
 repositories {
     mavenCentral()
@@ -23,13 +24,21 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    // Minecraft 26.2 dev-bundle (Mojang mappings) — нативный Dialog API
+    paperweight.paperDevBundle("26.2.build.+")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.14")
+    // WorldGuard 7.0.14 объявляет строгие версии gson/guava/fastutil (Mojang provides),
+    // которые конфликтуют с версиями из dev-bundle 26.2 — исключаем их транзитивы
+    // (compileOnly: в рантайме эти либы даёт сервер).
+    compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.14") {
+        exclude group: 'com.google.code.gson', module: 'gson'
+        exclude group: 'com.google.guava', module: 'guava'
+        exclude group: 'it.unimi.dsi', module: 'fastutil'
+    }
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(26))
 }
 
 shadowJar {
@@ -38,46 +47,10 @@ shadowJar {
     archiveVersion.set(project.version)
 }
 
-// =========================
-// Jar/ folder — артефакт всегда в git, удобно скачать с любого коммита
-// =========================
-tasks.register('copyJarToFolder') {
-    dependsOn(tasks.named('shadowJar'))
-    doLast {
-        def jarDir = new File(project.projectDir, "Jar")
-        def libsDir = new File(project.buildDir, "libs")
-
-        def source = libsDir.listFiles()?.find { f ->
-            f.name.endsWith(".jar") && !f.name.contains("sources") && !f.name.contains("javadoc")
-        }
-
-        if (source == null || !source.exists()) {
-            logger.warn("[JAR] Файл не найден в build/libs/")
-            return
-        }
-
-        jarDir.mkdirs()
-
-        // Удаляем старые JAR'ы в Jar/
-        jarDir.listFiles()?.each { f ->
-            if (f.name.endsWith(".jar") && f.delete()) {
-                logger.lifecycle("[JAR] Удалён старый: ${f.name}")
-            }
-        }
-
-        def jarName = "CubixSMP-${project.version}.jar"
-        def target = new File(jarDir, jarName)
-        java.nio.file.Files.copy(
-            source.toPath(),
-            target.toPath(),
-            java.nio.file.StandardCopyOption.REPLACE_EXISTING
-        )
-        logger.lifecycle("[JAR] Скопирован в Jar/: ${jarName}")
-    }
-}
+// Built jar lives in build/libs/ — tracked by git for easy download.
 
 tasks.named('assemble') {
-    dependsOn(tasks.named('copyJarToFolder'))
+    dependsOn(tasks.named('shadowJar'))
 }
 
 build.dependsOn shadowJar

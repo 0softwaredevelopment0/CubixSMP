@@ -55,11 +55,15 @@ public class PlacedBlockTracker implements Listener {
     public boolean isTrackedMaterial(Material mat) {
         String name = mat.name();
         return name.endsWith("_ORE")
+                || mat == Material.ANCIENT_DEBRIS
                 || name.endsWith("_LOG")
                 || name.endsWith("_WOOD")
                 || name.endsWith("_STEM")
                 || isCrop(mat);
         // DEEPSLATE_ORE варианты уже перехватываются _ORE выше;
+        // ANCIENT_DEBRIS не заканчивается на _ORE — без него поставленный игроком
+        // древний обломок не трекался, и MiningListener выдавал XP за его добычу
+        // (NaturalCheck считает его натуральным из-за соседнего нэзеррака).
         // Без DEEPSLATE_BRICKS etc. — они не дают XP и не должны трекаться.
     }
 

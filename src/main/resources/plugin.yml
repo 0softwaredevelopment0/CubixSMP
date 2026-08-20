@@ -1,7 +1,7 @@
 name: CubixSMP
 version: '1.0.0'
 main: com.cubixsmp.CubixSMP
-api-version: '1.21'
+api-version: '26.2'
 description: Level system for Cubix server
 author: rizer001
 
@@ -18,7 +18,7 @@ commands:
 permissions:
   cubixsmp.user:
     default: true
-    description: "Базовые команды: /cubixsmp, /cubixsmp daily, /cubixsmp stats"
+    description: "Базовые команды: /cubixsmp, /cubixsmp stats"
 
   cubixsmp.checkonline:
     default: true
@@ -27,6 +27,26 @@ permissions:
   cubixsmp.checkonline.other:
     default: op
     description: "Просмотр онлайна других игроков (/checkonline <ник>)"
+
+  cubixsmp.chat.format:
+    default: false
+    description: "Право на miniMessage форматирование в чате (цвета, градиенты, жирный и т.д.)"
+
+  cubixsmp.chat.channel.local:
+    default: true
+    description: "Отправка сообщений в локальный канал чата [L]"
+
+  cubixsmp.chat.channel.global:
+    default: true
+    description: "Отправка сообщений в глобальный канал чата [G]"
+
+  cubixsmp.chat.channel.world:
+    default: true
+    description: "Отправка сообщений в мировой канал чата [W]"
+
+  cubixsmp.chat.channel.admin:
+    default: op
+    description: "Отправка и просмотр админского канала чата [A]"
 
   cubixsmp.reload:
     default: op
@@ -59,3 +79,15 @@ permissions:
   cubixsmp.admin.info:
     default: op
     description: "Показать информацию о игроке (/cubixsmp admin info <player>)"
+
+  cubixsmp.admin.giveenchant:
+    default: op
+    description: "Выдать спец. зачарованную книгу (/cubixsmp admin giveenchant <player> <bur|autosmelt>)"
+
+  cubixsmp.particle:
+    default: true
+    description: "Партикл-трейлы вокруг игрока (/csmp particle <имя>, off — выключить)"
+
+  cubixsmp.particle.any:
+    default: op
+    description: "Использовать частицы вне списка particles.allowed в конфиге"
