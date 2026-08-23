@@ -1,14 +1,14 @@
 package com.cubixsmp;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LevelManager {
 
     private final CubixSMP plugin;
-    private final Map<UUID, Double> xpCache = new HashMap<>();
-    private final Map<UUID, Integer> levelCache = new HashMap<>();
+    private final Map<UUID, Double> xpCache = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> levelCache = new ConcurrentHashMap<>();
 
     // XP needed per level formula: base + (level * multiplier)
     private double xpBase;

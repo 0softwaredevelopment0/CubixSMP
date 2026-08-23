@@ -7,16 +7,17 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DistanceListener implements Listener {
 
     private final CubixSMP plugin;
-    private final Map<UUID, Location> lastPosition = new HashMap<>();
-    private final Map<UUID, Double> cumulativeDistance = new HashMap<>();
+    private final Map<UUID, Location> lastPosition = new ConcurrentHashMap<>();
+    private final Map<UUID, Double> cumulativeDistance = new ConcurrentHashMap<>();
 
     /**
      * Максимальное расстояние за один PlayerMoveEvent, которое считается
@@ -29,6 +30,13 @@ public class DistanceListener implements Listener {
 
     public DistanceListener(CubixSMP plugin) {
         this.plugin = plugin;
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        lastPosition.remove(uuid);
+        cumulativeDistance.remove(uuid);
     }
 
     @EventHandler

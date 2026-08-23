@@ -69,6 +69,8 @@ public class PlayerDataManager {
             public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) {
                 save(e.getPlayer().getUniqueId());
                 dataMap.remove(e.getPlayer().getUniqueId());
+                // Очищаем кэш последнего действия (placeholder)
+                CubixSMPPlaceholderExpansion.clearPlayer(e.getPlayer().getUniqueId());
             }
         }, plugin);
 

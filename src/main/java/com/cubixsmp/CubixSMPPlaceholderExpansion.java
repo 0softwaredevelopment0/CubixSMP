@@ -5,14 +5,24 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CubixSMPPlaceholderExpansion extends PlaceholderExpansion {
 
     private final CubixSMP plugin;
-    private static final Map<UUID, String> lastActions = new HashMap<>();
+    private static final Map<UUID, String> lastActions = new ConcurrentHashMap<>();
+
+    /** Очищает все данные (вызывается из onDisable). */
+    public static void clearAll() {
+        lastActions.clear();
+    }
+
+    /** Очищает данные конкретного игрока при выходе. */
+    public static void clearPlayer(UUID uuid) {
+        lastActions.remove(uuid);
+    }
 
     public CubixSMPPlaceholderExpansion(CubixSMP plugin) {
         this.plugin = plugin;

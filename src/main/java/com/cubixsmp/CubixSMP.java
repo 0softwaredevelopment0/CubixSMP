@@ -156,6 +156,7 @@ public final class CubixSMP extends JavaPlugin {
             playerDataManager.saveAll();
         }
         if (placeholderExpansion != null) {
+            CubixSMPPlaceholderExpansion.clearAll();
             placeholderExpansion.unregister();
         }
         getLogger().info("CubixSMP disabled!");
