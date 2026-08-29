@@ -145,7 +145,7 @@ If PlaceholderAPI is installed on the server, the following placeholders are ava
 
 ## 📦 Installation
 
-1. Download `CubixSMP-1.2.1.jar` from the [releases page](https://github.com/rizer001/CubixSMP/releases)
+1. Download `CubixSMP-1.2.1.jar` from the [releases page](https://github.com/rizer001-Development/CubixSMP/releases)
 2. Place the JAR in your server's `plugins/` folder
 3. (Optional) Install **PlaceholderAPI** for placeholder support
 4. Restart the server or run `/reload`
@@ -256,7 +256,7 @@ Level 99→100: 100 + (99 × 1.5) = 248.5 XP
 ## 🔨 Building from source
 
 ```bash
-git clone https://github.com/rizer001/CubixSMP.git
+git clone https://github.com/rizer001-Development/CubixSMP.git
 cd CubixSMP
 ./gradlew shadowJar
 ```
