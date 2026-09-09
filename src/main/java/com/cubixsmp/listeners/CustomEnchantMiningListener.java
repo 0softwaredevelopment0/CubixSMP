@@ -137,12 +137,15 @@ public class CustomEnchantMiningListener implements Listener {
                 if (sub.isCancelled()) continue;
 
                 // Прочность: 1 за каждый блок области (в дополнение к центральному).
-                // Идёт через PDC-систему целостности (ItemDurabilityManager), чтобы не
-                // нарушать синхронизацию PDC ↔ ванильная прочность.
+                // Ванильная трата прочности (setDurability), поломка инструмента
+                // завершает проход по области.
                 if (consumeDurability && !creative) {
-                    if (!plugin.getItemDurabilityManager().applyDamage(player, tool, 1)) {
+                    int damage = tool.getDurability() + 1;
+                    if (damage >= tool.getType().getMaxDurability()) {
+                        tool.setDurability((short) tool.getType().getMaxDurability());
                         break; // инструмент сломался — прекращаем
                     }
+                    tool.setDurability((short) damage);
                 }
 
                 breakBlock(b, tool, autosmelt, creative);

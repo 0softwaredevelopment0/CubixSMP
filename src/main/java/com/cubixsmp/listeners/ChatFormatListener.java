@@ -173,7 +173,6 @@ public class ChatFormatListener implements Listener {
 
                 // Значения %плейсхолдеров% — и в СООБЩЕНИИ, и в ФОРМАТИРОВАНИИ чата —
                 // принадлежат ОТПРАВИТЕЛЮ: все получатели видят одно и то же
-                // (например, %cubixsmp_uid% показывает UID автора)
                 String resolved = hasPlaceholders
                         ? PlaceholderAPI.setPlaceholders(sender, messageWithToken)
                         : messageWithToken;

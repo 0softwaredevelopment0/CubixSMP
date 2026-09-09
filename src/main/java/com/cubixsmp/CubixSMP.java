@@ -18,7 +18,6 @@ public final class CubixSMP extends JavaPlugin {
     private PingSettingsManager pingSettings;
     private ActionMenu actionMenu;
     private ParticleTrailManager particleTrailManager;
-    private ItemDurabilityManager itemDurabilityManager;
     private boolean hasPlaceholderAPI;
 
     @Override
@@ -47,10 +46,6 @@ public final class CubixSMP extends JavaPlugin {
         // ✨ ParticleTrailManager — персональные партикл-трейлы (/csmp particle <имя>)
         this.particleTrailManager = new ParticleTrailManager(this);
         particleTrailManager.reload(); // читает конфиг и запускает задачу спавна
-
-        // 🔧 ItemDurabilityManager — целостность предметов (прочность в PDC)
-        this.itemDurabilityManager = new ItemDurabilityManager(this);
-        getServer().getPluginManager().registerEvents(itemDurabilityManager, this);
 
         // Register listeners
         getServer().getPluginManager().registerEvents(new MiningListener(this), this);
@@ -135,9 +130,6 @@ public final class CubixSMP extends JavaPlugin {
         // Load all player data
         playerDataManager.loadAll();
 
-        // 📄 Файл списка UID игроков («1. ник», «2. ник», …) — пишется при старте сервера
-        playerDataManager.writeUidListFile();
-
         // Start playtime tracker
         getServer().getScheduler().runTaskTimer(this, this::tickPlaytime, 1200L, 1200L); // every 60s
 
@@ -179,7 +171,6 @@ public final class CubixSMP extends JavaPlugin {
     public PingSettingsManager getPingSettings() { return pingSettings; }
     public PlaytimeTracker getPlaytimeTracker() { return playtimeTracker; }
     public ParticleTrailManager getParticleTrailManager() { return particleTrailManager; }
-    public ItemDurabilityManager getItemDurabilityManager() { return itemDurabilityManager; }
     public CubixSMPPlaceholderExpansion getPlaceholderExpansion() { return placeholderExpansion; }
     public ActionMenu getActionMenu() { return actionMenu; }
     public boolean hasPlaceholderAPI() { return hasPlaceholderAPI; }

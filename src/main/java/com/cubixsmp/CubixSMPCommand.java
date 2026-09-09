@@ -68,7 +68,6 @@ public class CubixSMPCommand implements CommandExecutor {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             plugin.getPlayerDataManager().syncToManagers(p.getUniqueId());
         }
-        plugin.getPlayerDataManager().writeUidListFile();
         plugin.getParticleTrailManager().reload(); // перечитываем particles.* из конфига
         sender.sendMessage(MessagesManager.getString("general.config_reloaded", "§a✔ Configuration reloaded!"));
         return true;

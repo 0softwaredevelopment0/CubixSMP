@@ -39,7 +39,6 @@ Originally built for Russian-language SMP servers, but every message is fully tr
 - **Fully translatable** — all messages live in the `messages` section of `config.yml`
 - **Anvil enchant cap** — combining two books in an anvil can never exceed the vanilla enchantment limit (e.g. two Efficiency V books won't give Efficiency VI; over-limit enchants can only be bought with donate currency)
 - **Region Chat** — sends a chat message when entering/leaving a WorldGuard region, exactly once per region change, so there is no spam
-- **Account UID** — every new player gets a sequential account number (player 1 = 1, player 2 = 2, ...), shown via the `%cubixsmp_uid%` placeholder and stored permanently in `playerdata/`
 - **Chat channels** — local `[L]` / global `[G]` / world `[W]` / admin `[A]`. Switch with a message prefix (default: none / `!` / `$` / `#`), each channel has its own permission, the local channel has a configurable range in blocks, and the admin channel is only visible to players with its permission
 
 ---
@@ -113,7 +112,6 @@ If PlaceholderAPI is installed on the server, the following placeholders are ava
 
 | Placeholder | Description | Example |
 |-------------|-------------|---------|
-| `%cubixsmp_uid%` | Player's account number (player 1 = 1, player 2 = 2, ...) | `7` |
 | `%cubixsmp_level%` | Player's current level | `42` |
 | `%cubixsmp_xp%` | Current XP | `150` |
 | `%cubixsmp_level_xp_needed%` | XP needed for the next level | `200` |
@@ -214,10 +212,6 @@ region-chat:
   enabled: true               # Chat message when entering/leaving a WorldGuard region
   enter-message: "<white>Вы вошли в регион <yellow>{region}</yellow></white>"   # {region} — region name
   exit-message: "<white>Вы покидаете регион <yellow>{region}</yellow></white>"
-
-uid:
-  enabled: true               # Assign a sequential account number to every new player
-  starting-number: 1          # First assigned number (e.g. 2 → 2, 3, 4, ...)
 
 chat-channels:
   enabled: true               # Chat channels: local [L] / global [G] / world [W] / admin [A]
@@ -356,9 +350,6 @@ A: Channels require `chat-format.enabled: true` (the unified chat handler) and `
 
 **Q: Why can't I combine two Efficiency V books into Efficiency VI?**
 A: That's intended — the anvil is capped at the vanilla enchantment limit. Enchantments above the vanilla max (e.g. Efficiency VI) can only be obtained by buying them with donate currency.
-
-**Q: What is the player's account number (UID) and how do I change the starting one?**
-A: Every new player gets a sequential account number shown by `%cubixsmp_uid%` — it is not their Minecraft UUID. Set the starting number in `config.yml` (`uid.starting-number`); numbers are saved permanently in the player's `playerdata/<UUID>.yml` file and never change.
 
 ---
 

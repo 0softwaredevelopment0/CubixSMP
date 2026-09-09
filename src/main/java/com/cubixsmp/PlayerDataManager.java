@@ -20,8 +20,7 @@ public class PlayerDataManager {
         int totalPlaytimeSeconds;
         long lastDailyBonusDay;
         boolean soundEnabled;
-        int uid;
-        /** Ник игрока (для файла списка UID). */
+        /** Ник игрока (для плейсхолдеров и топа). */
         String name = "";
         /** Выбранный партикл-трейл ("" = выключен). */
         String particle = "";
@@ -32,25 +31,19 @@ public class PlayerDataManager {
             this.totalPlaytimeSeconds = 0;
             this.lastDailyBonusDay = 0;
             this.soundEnabled = true;
-            this.uid = 0;
         }
 
-        PlayerData(int level, double xp, int totalPlaytimeSeconds, long lastDailyBonusDay, boolean soundEnabled, int uid) {
+        PlayerData(int level, double xp, int totalPlaytimeSeconds, long lastDailyBonusDay, boolean soundEnabled) {
             this.level = level;
             this.xp = xp;
             this.totalPlaytimeSeconds = totalPlaytimeSeconds;
             this.lastDailyBonusDay = lastDailyBonusDay;
             this.soundEnabled = soundEnabled;
-            this.uid = uid;
         }
     }
 
-    /** Следующий свободный номер аккаунта (UID). */
-    private int nextUid;
-
     public PlayerDataManager(CubixSMP plugin) {
         this.plugin = plugin;
-        loadUidCounter();
         plugin.getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
             public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
@@ -60,9 +53,6 @@ public class PlayerDataManager {
                 if (d != null && (d.name == null || d.name.isEmpty())) {
                     d.name = e.getPlayer().getName();
                     save(uuid);
-                    // Переписываем файл списка UID ТОЛЬКО когда появилось новое имя
-                    // (при каждом входе это дорого — полный скан папки playerdata)
-                    writeUidListFile();
                 }
             }
             @org.bukkit.event.EventHandler
@@ -82,25 +72,6 @@ public class PlayerDataManager {
         File folder = plugin.getPlayerDataFolder();
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files == null) return;
-
-        // 🛡 Восстановление счётчика ДО выдачи новых номеров: если uid-counter.yml
-        // потерян/удалён, продолжаем с максимального уже выданного UID (по файлам),
-        // чтобы не выдавать дубликаты даже при наличии старых файлов без UID.
-        int maxUid = 0;
-        for (File f : files) {
-            String name = f.getName().replace(".yml", "");
-            try {
-                UUID.fromString(name); // пропускаем файлы с не-UUID именами
-            } catch (IllegalArgumentException ignored) {
-                continue;
-            }
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(f);
-            maxUid = Math.max(maxUid, config.getInt("uid", 0));
-        }
-        if (nextUid <= maxUid) {
-            nextUid = maxUid + 1;
-            saveUidCounter();
-        }
 
         for (File f : files) {
             String name = f.getName().replace(".yml", "");
@@ -123,14 +94,12 @@ public class PlayerDataManager {
                     config.getDouble("xp", 0),
                     config.getInt("playtime", 0),
                     config.getLong("daily-bonus-day", 0),
-                    config.getBoolean("sound-enabled", true),
-                    config.getInt("uid", 0)
+                    config.getBoolean("sound-enabled", true)
             );
             data.name = config.getString("name", "");
             data.particle = config.getString("particle", "");
         }
         dataMap.put(uuid, data);
-        ensureUid(uuid, data);
         syncToManagers(uuid);
     }
 
@@ -144,7 +113,6 @@ public class PlayerDataManager {
         config.set("playtime", data.totalPlaytimeSeconds);
         config.set("daily-bonus-day", data.lastDailyBonusDay);
         config.set("sound-enabled", data.soundEnabled);
-        config.set("uid", data.uid);
         if (data.name != null && !data.name.isEmpty()) {
             config.set("name", data.name);
         }
@@ -165,131 +133,7 @@ public class PlayerDataManager {
         }
     }
 
-    // ─── UID: номер аккаунта игрока ────────────────────────────────────
-
-    /**
-     * Присваивает игроку порядковый номер аккаунта (UID), если его ещё нет.
-     * Первый игрок получит номер из конфига {@code uid.starting-number} (по умолчанию 1),
-     * следующий — на единицу больше и т.д. Номер сохраняется сразу, чтобы не потеряться.
-     */
-    private void ensureUid(UUID uuid, PlayerData data) {
-        if (!plugin.getConfig().getBoolean("uid.enabled", true)) return;
-        if (data.uid != 0) return;
-        data.uid = nextUid++;
-        saveUidCounter();
-        save(uuid);
-    }
-
-    /** Возвращает номер аккаунта игрока (0, если ещё не присвоен). */
-    public int getUid(UUID uuid) {
-        PlayerData data = dataMap.get(uuid);
-        return data == null ? 0 : data.uid;
-    }
-
-    /** Загружает счётчик UID из файла (или стартовый номер из конфига). */
-    private void loadUidCounter() {
-        File file = getUidCounterFile();
-        if (file.exists()) {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-            nextUid = config.getInt("next-uid", plugin.getConfig().getInt("uid.starting-number", 1));
-        } else {
-            nextUid = plugin.getConfig().getInt("uid.starting-number", 1);
-        }
-    }
-
-    /** Сохраняет счётчик UID. */
-    private void saveUidCounter() {
-        File file = getUidCounterFile();
-        YamlConfiguration config = new YamlConfiguration();
-        config.set("next-uid", nextUid);
-        try {
-            config.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().warning(MessagesManager.format("errors.data_save", "§c⚠ Error saving UID counter: {error}",
-                    "error", e.getMessage()));
-        }
-    }
-
-    private File getUidCounterFile() {
-        return new File(plugin.getDataFolder(), "uid-counter.yml");
-    }
-
-    /**
-     * Пишет в файл (по умолчанию {@code players.txt} в папке плагина) список всех
-     * игроков с UID в формате:
-     * <pre>
-     * 1. Игрок
-     * 2. ДругойИгрок
-     * </pre>
-     * Вызывается при старте сервера и при входе игрока, чтобы файл всегда был актуален.
-     */
-    public synchronized void writeUidListFile() {
-        if (!plugin.getConfig().getBoolean("uid.list-enabled", true)) return;
-
-        String fileName = plugin.getConfig().getString("uid.list-file", "players.txt");
-        File target = new File(plugin.getDataFolder(), fileName);
-
-        java.util.List<UidEntry> entries = new java.util.ArrayList<>();
-        File folder = plugin.getPlayerDataFolder();
-        File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files != null) {
-            for (File f : files) {
-                String name = f.getName().replace(".yml", "");
-                final UUID uuid;
-                try {
-                    uuid = UUID.fromString(name);
-                } catch (IllegalArgumentException ignored) {
-                    continue;
-                }
-
-                // Для онлайн-игроков берём свежие данные из памяти, для офлайн — из файла
-                int uid;
-                String playerName;
-                PlayerData live = dataMap.get(uuid);
-                if (live != null) {
-                    uid = live.uid;
-                    playerName = live.name;
-                } else {
-                    YamlConfiguration config = YamlConfiguration.loadConfiguration(f);
-                    uid = config.getInt("uid", 0);
-                    playerName = config.getString("name", "");
-                }
-
-                if (uid <= 0) continue;
-                if (playerName == null || playerName.isEmpty()) {
-                    org.bukkit.OfflinePlayer offline = plugin.getServer().getOfflinePlayer(uuid);
-                    playerName = offline.getName();
-                    if (playerName == null) playerName = uuid.toString().substring(0, 8);
-                }
-                entries.add(new UidEntry(uid, playerName));
-            }
-        }
-
-        entries.sort(java.util.Comparator.comparingInt(e -> e.uid));
-
-        StringBuilder sb = new StringBuilder();
-        for (UidEntry entry : entries) {
-            sb.append(entry.uid).append(". ").append(entry.name).append("\n");
-        }
-
-        try {
-            java.nio.file.Files.write(target.toPath(), sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            plugin.getLogger().info("UID list written: " + target.getName() + " (" + entries.size() + " players)");
-        } catch (IOException e) {
-            plugin.getLogger().warning(MessagesManager.format("errors.data_save",
-                    "§c⚠ Error writing UID list: {error}", "error", e.getMessage()));
-        }
-    }
-
-    /** Вспомогательный класс для сортировки списка UID */
-    private static class UidEntry {
-        final int uid;
-        final String name;
-        UidEntry(int uid, String name) {
-            this.uid = uid;
-            this.name = name;
-        }
-    }
+    // ─── Уровни и опыт ──────────────────────────────────────────────
 
     public int getLevel(UUID uuid) {
         PlayerData data = dataMap.get(uuid);
