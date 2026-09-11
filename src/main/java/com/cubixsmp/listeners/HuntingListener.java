@@ -2,6 +2,7 @@ package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
 import com.cubixsmp.MessagesManager;
+import com.cubixsmp.WorldSettings;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,6 +26,9 @@ public class HuntingListener implements Listener {
         if (player == null) return;
 
         if (!plugin.getNaturalCheck().isNaturalMob(event.getEntity())) return;
+
+        // 🌍 Пер-мировая настройка: в этом мире Cubix-XP не начисляется
+        if (WorldSettings.isXpDisabled(plugin, player.getWorld())) return;
 
         EntityType type = event.getEntityType();
         double xp = plugin.getConfig().getDouble("hunting.mobs." + type.name(), 0);

@@ -3,6 +3,7 @@ package com.cubixsmp.listeners;
 import com.cubixsmp.CubixSMP;
 import com.cubixsmp.MessagesManager;
 import com.cubixsmp.PingSettingsManager;
+import com.cubixsmp.WorldSettings;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -48,6 +49,10 @@ public class ChatMentionListener implements Listener {
         // Fallback-путь: если ChatFormatListener выключен (chat-format.enabled: false),
         // сообщение форматируется здесь. Когда ChatFormatListener активен, он вызывает
         // formatMessage() сам и отменяет событие раньше, чем сработает этот обработчик.
+        // 🌍 Пер-мировая настройка: чат в этом мире отключён — не обрабатываем
+        // (ChatFormatListener гасит событие раньше, это только для fallback-пути).
+        if (WorldSettings.isChatDisabled(plugin, event.getPlayer().getWorld())) return;
+
         event.setMessage(formatMessage(event.getPlayer(), event.getMessage()));
     }
 

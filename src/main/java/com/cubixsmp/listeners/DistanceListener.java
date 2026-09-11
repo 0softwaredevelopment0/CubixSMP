@@ -2,6 +2,7 @@ package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
 import com.cubixsmp.MessagesManager;
+import com.cubixsmp.WorldSettings;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -43,6 +44,13 @@ public class DistanceListener implements Listener {
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+
+        // 🌍 Пер-мировая настройка: в этом мире Cubix-XP не начисляется
+        if (WorldSettings.isXpDisabled(plugin, player.getWorld())) {
+            lastPosition.remove(uuid);
+            cumulativeDistance.remove(uuid);
+            return;
+        }
 
         if (event.getFrom().getBlockX() == event.getTo().getBlockX()
                 && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {

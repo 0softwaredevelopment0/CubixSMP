@@ -2,6 +2,7 @@ package com.cubixsmp.listeners;
 
 import com.cubixsmp.ChatChannel;
 import com.cubixsmp.CubixSMP;
+import com.cubixsmp.WorldSettings;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -57,6 +58,14 @@ import java.util.regex.Pattern;
  * </ul>
  *
  * Настройки: секция {@code chat-format} в config.yml.
+ * <b>Пер-мировые настройки</b> (секция {@code worlds} в config.yml):
+ * <ul>
+ *   <li>{@code worlds.<мир>.chat-disabled: true} — чат CubixSMP в этом мире
+ *       отключён: сообщения игроков этого мира не отправляются (событие гасится).</li>
+ *   <li>{@code worlds.<мир>.chat-format: "..."} — свой формат строки чата для
+ *       сообщений из этого мира (например, без клана/привилегии). Синтаксис тот же,
+ *       что и у {@code chat-format.format}; %плейсхолдеры% — значения отправителя.</li>
+ * </ul>
  * Работает вместе с {@link ChatMentionListener} (@пнг) и заменяет собой
  * {@link ChatPlaceholderListener}, когда включён (fallback при выключенном).
  */
@@ -116,6 +125,18 @@ public class ChatFormatListener implements Listener {
 
         Player sender = event.getPlayer();
 
+        // ─── 🌍 Пер-мировые настройки чата (секция worlds в config.yml) ───
+        org.bukkit.World senderWorld = sender.getWorld();
+        if (WorldSettings.isChatDisabled(plugin, senderWorld)) {
+            // Чат CubixSMP в этом мире отключён: гасим событие — ни наш формат,
+            // ни ванильный не отправятся (у других плагинов остаётся шанс перехватить).
+            event.setCancelled(true);
+            return;
+        }
+        // Свой формат чата для сообщений из этого мира (worlds.<мир>.chat-format):
+        // например, без клана/привилегии. null = использовать chat-format.format.
+        final String worldFormat = WorldSettings.chatFormat(plugin, senderWorld);
+
         // ─── Каналы чата (chat-channels): выбор по префиксу сообщения ───
         boolean channelsEnabled = plugin.getConfig().getBoolean("chat-channels.enabled", true);
         final ChatChannel channel;
@@ -156,10 +177,13 @@ public class ChatFormatListener implements Listener {
         // 4. Отменяем стандартную рассылку — отправляем сами, чтобы работали компоненты
         event.setCancelled(true);
 
-        // Шаблон чата: chat-format.format (MiniMessage + {player}/{message} + PAPI).
-        // Если формат не задан/пустой — fallback на стандартный формат сервера <%1$s> %2$s
-        String format = plugin.getConfig().getString(CFG + "format",
-                "<dark_gray>[</dark_gray><aqua>{player}</aqua><dark_gray>]</dark_gray> <white>{message}</white>");
+        // Шаблон чата: worlds.<мир>.chat-format → chat-format.format (MiniMessage +
+        // {player}/{message} + PAPI). Если формат не задан/пустой — fallback на
+        // стандартный формат сервера <%1$s> %2$s
+        String format = (worldFormat != null && !worldFormat.isEmpty())
+                ? worldFormat
+                : plugin.getConfig().getString(CFG + "format",
+                        "<dark_gray>[</dark_gray><aqua>{player}</aqua><dark_gray>]</dark_gray> <white>{message}</white>");
         if (format == null || format.isEmpty()) {
             format = event.getFormat() != null ? event.getFormat() : "<%1$s> %2$s";
         }

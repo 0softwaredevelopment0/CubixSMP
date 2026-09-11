@@ -2,6 +2,7 @@ package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
 import com.cubixsmp.MessagesManager;
+import com.cubixsmp.WorldSettings;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -131,6 +132,8 @@ public class FarmingListener implements Listener {
 
     private void grantXp(Player player, double xp, String name) {
         if (xp <= 0) return;
+        // 🌍 Пер-мировая настройка: в этом мире Cubix-XP не начисляется
+        if (WorldSettings.isXpDisabled(plugin, player.getWorld())) return;
         plugin.getPlayerDataManager().addXp(player.getUniqueId(), xp, player);
         plugin.setLastAction(player.getUniqueId(), "Farming");
         String msg = MessagesManager.replace(

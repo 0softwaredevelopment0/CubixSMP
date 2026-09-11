@@ -2,6 +2,7 @@ package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
 import com.cubixsmp.MessagesManager;
+import com.cubixsmp.WorldSettings;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
@@ -40,6 +41,9 @@ public class MiningListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getBlock();
         Material type = block.getType();
+
+        // 🌍 Пер-мировая настройка: в этом мире Cubix-XP не начисляется
+        if (WorldSettings.isXpDisabled(plugin, player.getWorld())) return;
 
         double xp = getXpForBlock(type);
         if (xp <= 0) return;

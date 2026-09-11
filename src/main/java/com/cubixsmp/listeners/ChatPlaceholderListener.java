@@ -1,6 +1,7 @@
 package com.cubixsmp.listeners;
 
 import com.cubixsmp.CubixSMP;
+import com.cubixsmp.WorldSettings;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -39,6 +40,12 @@ public class ChatPlaceholderListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChat(AsyncPlayerChatEvent event) {
         if (!plugin.getConfig().getBoolean(CFG + "enabled", true)) return;
+
+        // 🌍 Пер-мировая настройка: в этом мире чат CubixSMP отключён
+        if (WorldSettings.isChatDisabled(plugin, event.getPlayer().getWorld())) {
+            event.setCancelled(true);
+            return;
+        }
 
         String raw = event.getMessage();
         if (!HAS_PLACEHOLDER.matcher(raw).find()) return;

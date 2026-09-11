@@ -215,6 +215,14 @@ public class PlayerDataManager {
         }
         data.totalPlaytimeSeconds += seconds;
 
+        // 🌍 Пер-мировая настройка: в этом мире Cubix-XP не начисляется.
+        // Онлайн (playtime) трекается, но XP за интервал в XP-мире не выдаётся.
+        Player xpPlayer = plugin.getServer().getPlayer(uuid);
+        if (xpPlayer != null && xpPlayer.isOnline()
+                && WorldSettings.isXpDisabled(plugin, xpPlayer.getWorld())) {
+            return;
+        }
+
         int interval = plugin.getConfig().getInt("settings.playtime-interval", 1800);
         int xpAmount = plugin.getConfig().getInt("settings.xp-per-playtime-interval", 10);
 
