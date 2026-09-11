@@ -49,8 +49,9 @@ public class ChatMentionListener implements Listener {
         // Fallback-путь: если ChatFormatListener выключен (chat-format.enabled: false),
         // сообщение форматируется здесь. Когда ChatFormatListener активен, он вызывает
         // formatMessage() сам и отменяет событие раньше, чем сработает этот обработчик.
-        // 🌍 Пер-мировая настройка: чат в этом мире отключён — не обрабатываем
-        // (ChatFormatListener гасит событие раньше, это только для fallback-пути).
+        // 🌍 Пер-мировая настройка: обработка чата CubixSMP в этом мире отключена —
+        // не форматируем и событие не трогаем (ChatFormatListener выходит раньше;
+        // это только для fallback-пути).
         if (WorldSettings.isChatDisabled(plugin, event.getPlayer().getWorld())) return;
 
         event.setMessage(formatMessage(event.getPlayer(), event.getMessage()));

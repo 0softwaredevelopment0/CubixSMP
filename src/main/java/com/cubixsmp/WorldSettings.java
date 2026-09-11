@@ -13,8 +13,10 @@ import org.bukkit.World;
  *   <li>{@code no-trampling: true} — запретить вытаптывание грядок в мире;
  *       {@code false} — разрешить (переопределяет {@code farming.no-trampling});
  *       ключ не задан — берётся глобальная настройка.</li>
- *   <li>{@code chat-disabled: true} — чат CubixSMP отключён в мире
- *       (сообщения игроков этого мира не отправляются).
+ *   <li>{@code chat-disabled: true} — обработка чата CubixSMP в мире отключена:
+ *       CubixSMP не форматирует и не отправляет сообщения игроков этого мира
+ *       и НЕ отменяет событие чата, поэтому чат обрабатывают другие плагины
+ *       (BedWars, RegionChat и т.д.) или ванильный сервер.
  *       Работает, когда чатом управляет CubixSMP ({@code chat-format.enabled: true}).</li>
  *   <li>{@code chat-format: "..."} — свой формат чата для сообщений ИЗ этого мира
  *       (переопределяет {@code chat-format.format}; синтаксис тот же:
@@ -51,7 +53,7 @@ public final class WorldSettings {
         return plugin.getConfig().getBoolean("farming.no-trampling", true);
     }
 
-    /** true — чат CubixSMP в этом мире отключён (сообщения игроков не отправляются). */
+    /** true — обработка чата CubixSMP в этом мире отключена (событие чата не трогаем). */
     public static boolean isChatDisabled(CubixSMP plugin, World world) {
         if (world == null) return false;
         return plugin.getConfig().getBoolean(base(world.getName()) + "chat-disabled", false);

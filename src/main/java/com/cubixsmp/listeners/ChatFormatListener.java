@@ -60,8 +60,10 @@ import java.util.regex.Pattern;
  * Настройки: секция {@code chat-format} в config.yml.
  * <b>Пер-мировые настройки</b> (секция {@code worlds} в config.yml):
  * <ul>
- *   <li>{@code worlds.<мир>.chat-disabled: true} — чат CubixSMP в этом мире
- *       отключён: сообщения игроков этого мира не отправляются (событие гасится).</li>
+ *   <li>{@code worlds.<мир>.chat-disabled: true} — обработка чата CubixSMP в этом
+ *       мире отключена: CubixSMP не форматирует и не отправляет сообщения игроков
+ *       этого мира и НЕ трогает событие чата — его обрабатывают другие плагины
+ *       (BedWars, RegionChat и т.д.) или ванильный чат.</li>
  *   <li>{@code worlds.<мир>.chat-format: "..."} — свой формат строки чата для
  *       сообщений из этого мира (например, без клана/привилегии). Синтаксис тот же,
  *       что и у {@code chat-format.format}; %плейсхолдеры% — значения отправителя.</li>
@@ -128,9 +130,8 @@ public class ChatFormatListener implements Listener {
         // ─── 🌍 Пер-мировые настройки чата (секция worlds в config.yml) ───
         org.bukkit.World senderWorld = sender.getWorld();
         if (WorldSettings.isChatDisabled(plugin, senderWorld)) {
-            // Чат CubixSMP в этом мире отключён: гасим событие — ни наш формат,
-            // ни ванильный не отправятся (у других плагинов остаётся шанс перехватить).
-            event.setCancelled(true);
+            // Чат CubixSMP в этом мире отключён: выходим, НЕ трогая событие —
+            // его обработают другие плагины (BedWars и т.п.) или ванильный чат.
             return;
         }
         // Свой формат чата для сообщений из этого мира (worlds.<мир>.chat-format):

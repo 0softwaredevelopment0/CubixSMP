@@ -41,11 +41,9 @@ public class ChatPlaceholderListener implements Listener {
     public void onChat(AsyncPlayerChatEvent event) {
         if (!plugin.getConfig().getBoolean(CFG + "enabled", true)) return;
 
-        // 🌍 Пер-мировая настройка: в этом мире чат CubixSMP отключён
-        if (WorldSettings.isChatDisabled(plugin, event.getPlayer().getWorld())) {
-            event.setCancelled(true);
-            return;
-        }
+        // 🌍 Пер-мировая настройка: обработка чата CubixSMP в этом мире отключена —
+        // выходим, НЕ трогая событие (его обработают другие плагины/ванильный чат).
+        if (WorldSettings.isChatDisabled(plugin, event.getPlayer().getWorld())) return;
 
         String raw = event.getMessage();
         if (!HAS_PLACEHOLDER.matcher(raw).find()) return;
