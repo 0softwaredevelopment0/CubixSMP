@@ -8,7 +8,7 @@
 
 ### Organization Docs
 
-[![Guide](https://img.shields.io/badge/Guide-rizer001--Development-00AEFF)](https://github.com/rizer001-Development/.github/blob/main/GUIDE.md) · [![Contributing](https://img.shields.io/badge/Contributing-rizer001--Development-4CAF50)](https://github.com/rizer001-Development/.github/blob/main/CONTRIBUTING.md) · [![Security](https://img.shields.io/badge/Security-rizer001--Development-D9534F)](https://github.com/rizer001-Development/.github/blob/main/SECURITY.md) · [![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-rizer001--Development-5BC0DE)](https://github.com/rizer001-Development/.github/blob/main/CODE_OF_CONDUCT.md)
+[![Guide](https://img.shields.io/badge/Guide-0softwaredevelopment0-00AEFF)](https://github.com/0softwaredevelopment0/.github/blob/main/GUIDE.md) · [![Contributing](https://img.shields.io/badge/Contributing-0softwaredevelopment0-4CAF50)](https://github.com/0softwaredevelopment0/.github/blob/main/CONTRIBUTING.md) · [![Security](https://img.shields.io/badge/Security-0softwaredevelopment0-D9534F)](https://github.com/0softwaredevelopment0/.github/blob/main/SECURITY.md) · [![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-0softwaredevelopment0-5BC0DE)](https://github.com/0softwaredevelopment0/.github/blob/main/CODE_OF_CONDUCT.md)
 
 Originally built for Russian-language SMP servers, but every message is fully translatable via the `messages` section in `config.yml`.
 
@@ -143,7 +143,7 @@ Renders as `§7[§6⚡42§7] §frizer001`.
 
 ## Installation
 
-1. Download `CubixSMP-1.2.1.jar` from the [releases page](https://github.com/rizer001-Development/CubixSMP/releases)
+1. Download `CubixSMP-1.2.1.jar` from the [releases page](https://github.com/0softwaredevelopment0/CubixSMP/releases)
 2. Place the JAR in your server's `plugins/` folder
 3. (Optional) Install **PlaceholderAPI** for placeholder support
 4. Restart the server or run `/reload`
@@ -250,7 +250,7 @@ Level 99→100: 100 + (99 × 1.5) = 248.5 XP
 ## Building from source
 
 ```bash
-git clone https://github.com/rizer001-Development/CubixSMP.git
+git clone https://github.com/0softwaredevelopment0/CubixSMP.git
 cd CubixSMP
 ./gradlew shadowJar
 ```
