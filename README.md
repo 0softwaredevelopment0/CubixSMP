@@ -1,7 +1,5 @@
 # CubixSMP
 
-![Development status](https://img.shields.io/badge/status-Stable-brightgreen)
-
 **CubixSMP** — a Paper 26.2 plugin that adds an advanced leveling system (Cubix Level) to your SMP server. Players earn experience (XP) for various in-game activities and level up.
 
 ---
