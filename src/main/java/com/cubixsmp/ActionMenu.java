@@ -41,7 +41,7 @@ import java.util.UUID;
  *   <li>{@link MultiActionDialog} — окно с заголовком, текстом и кнопками
  *       [ЛС] / [TPA] / [Отмена] (CustomAll-действия).</li>
  *   <li>Кнопка [ЛС] — закрывает это окно и открывает второе окно с полем ввода
- *       ({@link TextInput}) для текста сообщения, кнопки [✔ Отправить] / [✖ Отмена].</li>
+ *       ({@link TextInput}) для текста сообщения, кнопки [✔ Отправить] / [❌ Отмена].</li>
  *   <li>Кнопка [TPA] — закрывает окно и сразу выполняет tpa-command.</li>
  *   <li>Кнопки [Отмена] — просто закрывают окно.</li>
  * </ul>
@@ -109,7 +109,7 @@ public class ActionMenu implements Listener {
                 Optional.of(new CustomAll(ACTION_TPA, Optional.empty())));
         ActionButton cancelButton = new ActionButton(
                 new CommonButtonData(nativeText(plugin.getConfig()
-                        .getString(CFG + "cancel-button", "<red>✖ Отмена</red>")), 200),
+                        .getString(CFG + "cancel-button", "<red>❌ Отмена</red>")), 200),
                 Optional.of(new CustomAll(ACTION_CANCEL, Optional.empty())));
 
         CommonDialogData data = new CommonDialogData(
@@ -160,7 +160,7 @@ public class ActionMenu implements Listener {
                 Optional.of(new CustomAll(MSG_SEND, Optional.empty())));
         ActionButton cancelButton = new ActionButton(
                 new CommonButtonData(nativeText(plugin.getConfig()
-                        .getString(CFG + "msg-cancel-button", "<red>✖ Отмена</red>")), 200),
+                        .getString(CFG + "msg-cancel-button", "<red>❌ Отмена</red>")), 200),
                 Optional.of(new CustomAll(MSG_CANCEL, Optional.empty())));
 
         CommonDialogData data = new CommonDialogData(

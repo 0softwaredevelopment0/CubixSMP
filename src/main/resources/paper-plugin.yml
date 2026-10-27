@@ -1,13 +1,23 @@
 name: CubixSMP
-version: '1.0.0'
+version: '${project.version}'
 main: com.cubixsmp.CubixSMP
-api-version: '26.2'
+api-version: '26.3'
 description: Level system for Cubix server
 author: rizer001
 
-softdepend:
-  - PlaceholderAPI
-  - WorldGuard
+# Paper plugin loader dependencies (replaces softdepend).
+# Both integrations are optional: the plugin runs standalone, but when the
+# plugin is installed its classes are joined into CubixSMP's classpath.
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    WorldGuard:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 commands:
   cubixsmp:

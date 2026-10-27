@@ -1,5 +1,7 @@
 package com.cubixsmp;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -65,18 +67,20 @@ public final class CustomEnchantManager {
         ItemMeta meta = book.getItemMeta();
         if (meta == null) return book;
 
-        meta.setDisplayName(plugin.getConfig().getString("custom-enchants.book.name", "§d§lЗачарованная книга"));
+        meta.displayName(LegacyComponentSerializer.legacySection()
+                .deserialize(plugin.getConfig().getString("custom-enchants.book.name", "§d§lЗачарованная книга")));
 
         List<String> lore = new ArrayList<>(plugin.getConfig().getStringList("custom-enchants.book.lore"));
         if (lore.isEmpty()) {
             lore.add("§7Содержит зачарование: §f" + displayName(type));
         }
-        for (int i = 0; i < lore.size(); i++) {
-            lore.set(i, lore.get(i)
+        List<Component> loreComponents = new ArrayList<>(lore.size());
+        for (String line : lore) {
+            loreComponents.add(LegacyComponentSerializer.legacySection().deserialize(line
                     .replace("{enchant}", displayName(type))
-                    .replace("{description}", description(type)));
+                    .replace("{description}", description(type))));
         }
-        meta.setLore(lore);
+        meta.lore(loreComponents);
 
         meta.getPersistentDataContainer().set(keys.get(type), PersistentDataType.INTEGER, 1);
         book.setItemMeta(meta);
@@ -94,14 +98,15 @@ public final class CustomEnchantManager {
         meta.getPersistentDataContainer().set(keys.get(type), PersistentDataType.INTEGER, 1);
 
         String line = loreLine(type);
-        List<String> lore = meta.getLore();
+        Component newLine = LegacyComponentSerializer.legacySection().deserialize(line);
+        List<Component> lore = meta.lore();
         if (lore == null) {
             lore = new ArrayList<>();
         }
-        if (!lore.contains(line)) {
-            lore.add(line);
+        if (!lore.contains(newLine)) {
+            lore.add(newLine);
         }
-        meta.setLore(lore);
+        meta.lore(lore);
         item.setItemMeta(meta);
     }
 

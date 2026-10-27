@@ -3,6 +3,7 @@ package com.cubixsmp.listeners;
 import com.cubixsmp.CubixSMP;
 import com.cubixsmp.WorldSettings;
 import me.clip.placeholderapi.PlaceholderAPI;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -62,15 +63,16 @@ public class ChatPlaceholderListener implements Listener {
         Bukkit.getScheduler().runTask(plugin, () -> {
             try {
                 // Значения плейсхолдеров — ОТПРАВИТЕЛЯ, одинаковые для всех получателей
+                String senderName = LegacyComponentSerializer.legacySection().serialize(sender.displayName());
                 String resolved = PlaceholderAPI.setPlaceholders(sender, raw);
-                String msg = format.replace("%1$s", sender.getDisplayName())
+                String msg = format.replace("%1$s", senderName)
                                    .replace("%2$s", resolved);
                 for (Player recipient : recipients) {
                     recipient.sendMessage(msg);
                 }
 
                 // Лог в консоль (с значениями отправителя)
-                String logMsg = format.replace("%1$s", sender.getDisplayName())
+                String logMsg = format.replace("%1$s", senderName)
                                       .replace("%2$s", resolved);
                 Bukkit.getConsoleSender().sendMessage(logMsg);
             } catch (Exception e) {

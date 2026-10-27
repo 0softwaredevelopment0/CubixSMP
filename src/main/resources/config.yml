@@ -405,13 +405,13 @@ chat-format:
     body: "<white>Действия с игроком </white><yellow>{player}</yellow><white>:</white>"
     msg-button: "<green>✉ Личное сообщение</green>"
     tpa-button: "<aqua>⛏ Телепортация</aqua>"
-    cancel-button: "<red>✖ Отмена</red>"
+    cancel-button: "<red>❌ Отмена</red>"
     # Окно ввода текста для /m
     msg-title: "<gold>✉ Сообщение для </gold><yellow>{player}</yellow>"
     msg-body: "<white>Введите текст сообщения для </white><yellow>{player}</yellow><white>:</white>"
     msg-input-label: "<gray>Текст сообщения</gray>"
     msg-send-button: "<green>✔ Отправить</green>"
-    msg-cancel-button: "<red>✖ Отмена</red>"
+    msg-cancel-button: "<red>❌ Отмена</red>"
 
 # ═════════════════════════════════════════════════════════════════════
 # 💀 12. DEATH MESSAGE — координаты смерти в чат

@@ -14,6 +14,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.Vector;
 
 import java.util.Collection;
@@ -137,15 +139,21 @@ public class CustomEnchantMiningListener implements Listener {
                 if (sub.isCancelled()) continue;
 
                 // Прочность: 1 за каждый блок области (в дополнение к центральному).
-                // Ванильная трата прочности (setDurability), поломка инструмента
+                // Ванильная трата прочности (Damageable), поломка инструмента
                 // завершает проход по области.
                 if (consumeDurability && !creative) {
-                    int damage = tool.getDurability() + 1;
-                    if (damage >= tool.getType().getMaxDurability()) {
-                        tool.setDurability((short) tool.getType().getMaxDurability());
-                        break; // инструмент сломался — прекращаем
+                    int maxDurability = tool.getType().getMaxDurability();
+                    ItemMeta meta = tool.getItemMeta();
+                    if (meta instanceof Damageable damageable) {
+                        int damage = damageable.getDamage() + 1;
+                        if (damage >= maxDurability) {
+                            damageable.setDamage(maxDurability);
+                            tool.setItemMeta(damageable);
+                            break; // инструмент сломался — прекращаем
+                        }
+                        damageable.setDamage(damage);
+                        tool.setItemMeta(damageable);
                     }
-                    tool.setDurability((short) damage);
                 }
 
                 breakBlock(b, tool, autosmelt, creative);

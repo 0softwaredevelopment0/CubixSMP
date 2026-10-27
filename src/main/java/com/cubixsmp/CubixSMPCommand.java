@@ -222,7 +222,7 @@ public class CubixSMPCommand implements CommandExecutor {
 
         sender.sendMessage(MessagesManager.format("command.help_header",
                 "§6CubixSMP §7v{version} §8— Помощь",
-                "version", plugin.getDescription().getVersion()));
+                "version", plugin.getPluginMeta().getVersion()));
 
         int from = (page - 1) * pageSize;
         int to = Math.min(from + pageSize, commands.size());
@@ -553,7 +553,7 @@ public class CubixSMPCommand implements CommandExecutor {
         }
 
         java.util.UUID uuid = target.getUniqueId();
-        String version = plugin.getDescription().getVersion();
+        String version = plugin.getPluginMeta().getVersion();
         int level = plugin.getLevelManager().getLevel(uuid);
         double xp = plugin.getLevelManager().getXp(uuid);
         double needed = plugin.getLevelManager().getXpForNextLevel(level);

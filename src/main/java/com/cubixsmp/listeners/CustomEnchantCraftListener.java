@@ -83,7 +83,7 @@ public class CustomEnchantCraftListener implements Listener {
                 // Инвентарь полон, но курсор пуст — кладём результат в курсор (как в ванили),
                 // чтобы книга не дублировалась на сервере без рецепта
                 consumeIngredients(inv);
-                event.setCursor(result.clone());
+                player.setItemOnCursor(result.clone());
                 inv.setResult(null);
                 player.updateInventory();
                 return;

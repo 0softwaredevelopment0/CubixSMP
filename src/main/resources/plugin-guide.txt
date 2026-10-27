@@ -17,4 +17,4 @@
   • Информацию для разработчиков
 
 ---
-CubixSMP — Paper 1.21.4 | Автор: rizer001 | AGPL v3.0
+CubixSMP — Paper 26.3 | Автор: rizer001 | AGPL v3.0

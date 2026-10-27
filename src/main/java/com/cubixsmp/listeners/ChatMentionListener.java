@@ -9,6 +9,8 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,6 +20,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -159,17 +162,27 @@ public class ChatMentionListener implements Listener {
         float volume = (float) plugin.getConfig().getDouble(CFG + "ping-sound-volume", 0.8);
         float pitch = (float) plugin.getConfig().getDouble(CFG + "ping-sound-pitch", 1.5);
 
-        Sound sound;
-        try {
-            sound = Sound.valueOf(soundName);
-        } catch (IllegalArgumentException e) {
-            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
-        }
+        Sound sound = resolveSound(soundName);
 
         for (Player target : targets) {
             if (pingSettings.isEnabled(target)) {
                 target.playSound(target.getLocation(), sound, volume, pitch);
             }
         }
+    }
+
+    /**
+     * Resolves a configured sound name through the modern sound registry
+     * ({@link Sound#valueOf(String)} is deprecated and marked for removal).
+     * Both registry keys ({@code block.note_block.pling}) and the legacy enum
+     * names used in existing configs ({@code BLOCK_NOTE_BLOCK_PLING}) resolve.
+     */
+    private static Sound resolveSound(String name) {
+        if (name == null || name.isBlank()) {
+            return Sound.BLOCK_NOTE_BLOCK_PLING;
+        }
+        String key = name.trim().toLowerCase(Locale.ROOT).replace('_', '.');
+        Sound resolved = Registry.SOUND_EVENT.get(NamespacedKey.minecraft(key));
+        return resolved != null ? resolved : Sound.BLOCK_NOTE_BLOCK_PLING;
     }
 }

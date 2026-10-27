@@ -357,10 +357,9 @@ public class ChatFormatListener implements Listener {
             for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
                 lines.add(entry.getKey().displayName(entry.getValue()));
             }
-            if (meta.hasLore()) {
-                for (String loreLine : meta.getLore()) {
-                    lines.add(LegacyComponentSerializer.legacySection().deserialize(loreLine));
-                }
+            List<Component> lore = meta.lore();
+            if (lore != null) {
+                lines.addAll(lore);
             }
         }
 
@@ -453,11 +452,8 @@ public class ChatFormatListener implements Listener {
     // ─── Кликабельный ник ─────────────────────────────────────────
 
     private Component buildNicknameComponent(Player sender) {
-        String display = sender.getDisplayName() != null && !sender.getDisplayName().isEmpty()
-                ? sender.getDisplayName()
-                : sender.getName();
-
-        Component text = LegacyComponentSerializer.legacySection().deserialize(display);
+        Component display = sender.displayName();
+        Component text = display == null ? Component.text(sender.getName()) : display;
 
         String hover = plugin.getConfig().getString(CFG + "nickname-hover", "§7Клик — действия с игроком");
         Component nick = text.hoverEvent(HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(hover)));

@@ -2,7 +2,7 @@
 
 ![Latest release](https://img.shields.io/github/v/release/0softwaredevelopment0/CubixSMP)
 
-**CubixSMP** — a Paper 26.2 plugin that adds an advanced leveling system (Cubix Level) to your SMP server. Players earn experience (XP) for various in-game activities and level up.
+**CubixSMP** — a Paper 26.3 plugin that adds an advanced leveling system (Cubix Level) to your SMP server. Players earn experience (XP) for various in-game activities and level up.
 
 ---
 
@@ -255,13 +255,17 @@ cd CubixSMP
 ./gradlew shadowJar
 ```
 
-Result: `build/libs/CubixSMP-1.2.1.jar`
+Result: `build/libs/CubixSMP-2.0.0-alpha.1.jar`
+
+> The jar is built for Minecraft 26.3 and ships the modern Paper plugin
+> manifest (`paper-plugin.yml`), so a Paper 26.3+ server loads it through the
+> new plugin loader — no legacy `plugin.yml` is bundled.
 
 ---
 
 ## Requirements
 
-- **Server:** Paper 26.2 (or its forks: Purpur, Pufferfish, etc.)
+- **Server:** Paper 26.3 (or its forks: Purpur, Pufferfish, etc.)
 - **Java:** 26
 - **Optional:** PlaceholderAPI 2.11+ — placeholders
 - **Optional:** WorldGuard — region chat messages
@@ -305,7 +309,7 @@ CubixSMP/
 │       ├── AnvilEnchantListener.java  — Vanilla enchant cap in the anvil
 │       └── RegionChatListener.java     — WorldGuard region enter/exit messages in chat
 ├── src/main/resources/
-│   ├── plugin.yml              — Plugin description
+│   ├── paper-plugin.yml        — Plugin description (Paper plugin loader)
 │   ├── config.yml              — XP configuration and messages
 │   └── plugin-guide.txt        — Link to the README
 └── build/libs/                 — Ready-to-use builds
@@ -313,7 +317,7 @@ CubixSMP/
 
 ### Dependencies
 
-- `io.papermc.paperweight.userdev` + `paperDevBundle("26.2.build.+")` — Paper 26.2 API (Mojang mappings)
+- `io.papermc.paperweight.userdev` 2.0.0-beta.24 + `paperDevBundle("26.3.build.+")` — Paper 26.3 API (Mojang mappings)
 - `me.clip:placeholderapi:2.11.6` (compileOnly, optional)
 - `com.sk89q.worldguard:worldguard-bukkit:7.0.14` (compileOnly, optional)
 
@@ -328,7 +332,7 @@ A: Check that the section is enabled (`enabled: true`). Make sure the ore is nat
 A: Yes. Just add `MATERIAL_NAME: XP` to the corresponding `config.yml` section and run `/cubixsmp reload`.
 
 **Q: Does the plugin work on Spigot/CraftBukkit?**
-A: No, Paper 26.2 (or a fork: Purpur, Pufferfish) is required. On Spigot the mob naturalness check will work with limitations.
+A: No, Paper 26.3 (or a fork: Purpur, Pufferfish) is required. On Spigot the mob naturalness check will work with limitations.
 
 **Q: How do I reset a player's progress?**
 A: Delete the file `playerdata/<player UUID>.yml` and reload the plugin.

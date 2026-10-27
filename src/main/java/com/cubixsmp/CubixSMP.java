@@ -133,7 +133,7 @@ public final class CubixSMP extends JavaPlugin {
         // Start playtime tracker
         getServer().getScheduler().runTaskTimer(this, this::tickPlaytime, 1200L, 1200L); // every 60s
 
-        getLogger().info("CubixSMP v" + getDescription().getVersion() + " enabled!");
+        getLogger().info("CubixSMP v" + getPluginMeta().getVersion() + " enabled!");
     }
 
     @Override
